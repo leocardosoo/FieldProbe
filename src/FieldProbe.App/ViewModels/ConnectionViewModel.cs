@@ -137,9 +137,20 @@ public sealed class ConnectionViewModel : ObservableObject
         get => _itemCount;
         set
         {
-            if (Set(ref _itemCount, value)) OnPropertyChanged(nameof(Subtitle));
+            if (Set(ref _itemCount, value))
+            {
+                OnPropertyChanged(nameof(Subtitle));
+                OnPropertyChanged(nameof(ItemCountText));
+            }
         }
     }
+
+    public string ItemCountText => ItemCount switch
+    {
+        0 => "Nenhum item monitorado",
+        1 => "1 item monitorado",
+        var n => $"{n} itens monitorados"
+    };
 
     public string Subtitle => ItemCount switch
     {

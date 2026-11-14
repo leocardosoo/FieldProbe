@@ -200,7 +200,16 @@
                                     <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#EEF1F5" />
                                     <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="#1F2328" />
                                     <HierarchicalDataTemplate DataType="{x:Type vm:ConnectionViewModel}" ItemsSource="{Binding Nodes}">
-                                        <Grid Margin="0,4,0,4" Width="270" ToolTip="{Binding Status}">
+                                        <Grid Margin="0,4,0,4" Width="270">
+                                            <Grid.ToolTip>
+                                                <StackPanel MaxWidth="460">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                                    <TextBlock Text="{Binding Protocol}" Foreground="#57606A" />
+                                                    <TextBlock Text="{Binding Endpoint}" FontFamily="Consolas" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                                    <TextBlock Text="{Binding ItemCountText}" />
+                                                    <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#57606A" Margin="0,4,0,0" />
+                                                </StackPanel>
+                                            </Grid.ToolTip>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
@@ -414,8 +423,22 @@
                                 </DataGrid.RowStyle>
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Conexão" MinWidth="90" Binding="{Binding ConnectionName, Mode=OneWay}" />
-                                    <DataGridTextColumn Header="Nome" MinWidth="150" Binding="{Binding Label, Mode=OneWay}" FontWeight="SemiBold" />
-                                    <DataGridTextColumn Header="Endereço" MinWidth="170" Binding="{Binding AddressText, Mode=OneWay}" FontFamily="Consolas" />
+                                    <DataGridTextColumn Header="Nome" MinWidth="150" Binding="{Binding Label, Mode=OneWay}" FontWeight="SemiBold">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                                <Setter Property="ToolTip" Value="{Binding LabelToolTip}" />
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Endereço" MinWidth="170" Binding="{Binding AddressText, Mode=OneWay}" FontFamily="Consolas">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                                <Setter Property="ToolTip" Value="{Binding LabelToolTip}" />
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
                                     <DataGridTextColumn Header="Tipo" MinWidth="70" Binding="{Binding DataType, Mode=OneWay}" />
                                     <DataGridTextColumn Header="Ordem" MinWidth="60" Binding="{Binding ByteOrderText, Mode=OneWay}" />
                                     <DataGridTextColumn Header="Valor" MinWidth="130" Binding="{Binding ValueText, Mode=OneWay}" Width="150" FontWeight="SemiBold" FontFamily="Consolas" />

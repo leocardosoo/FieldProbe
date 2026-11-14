@@ -75,12 +75,29 @@ public sealed class WatchItemViewModel : ObservableObject
         get => _displayName;
         set
         {
-            if (Set(ref _displayName, value?.Trim() ?? string.Empty)) OnPropertyChanged(nameof(Label));
+            if (Set(ref _displayName, value?.Trim() ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(Label));
+                OnPropertyChanged(nameof(LabelToolTip));
+            }
         }
     }
 
     /// <summary>Nome amigável ou, se vazio, o endereço.</summary>
-    public string Label => _displayName.Length > 0 ? _displayName : AddressText;
+    /// <summary>Nome exibido. Sem nome definido, usa o endereço (OPC UA: só o identificador, sem "ns=2;s=").</summary>
+    public string Label => _displayName.Length > 0 ? _displayName : ShortAddress(AddressText);
+
+    /// <summary>Texto do tooltip das colunas Nome/Endereço.</summary>
+    public string LabelToolTip => _displayName.Length > 0 ? $"{_displayName}\n{AddressText}" : AddressText;
+
+    private static string ShortAddress(string address)
+    {
+        // ns=2;s=Linha1.Temperatura -> Linha1.Temperatura
+        var marker = address.IndexOf(";s=", StringComparison.Ordinal);
+        return address.StartsWith("ns=", StringComparison.Ordinal) && marker > 0 && marker + 3 < address.Length
+            ? address[(marker + 3)..]
+            : address;
+    }
 
     /// <summary>Valor exibido = valor bruto × Escala + Offset.</summary>
     public double Scale
@@ -389,6 +406,7 @@ public sealed class WatchItemViewModel : ObservableObject
         OnPropertyChanged(nameof(ByteOrderText));
         OnPropertyChanged(nameof(IntervalMs));
         OnPropertyChanged(nameof(Label));
+        OnPropertyChanged(nameof(LabelToolTip));
 
         if (wasActive) Start();
     }

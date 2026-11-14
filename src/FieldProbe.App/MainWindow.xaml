@@ -413,14 +413,14 @@
                                     </Style>
                                 </DataGrid.RowStyle>
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Conexão" Binding="{Binding ConnectionName, Mode=OneWay}" />
-                                    <DataGridTextColumn Header="Nome" Binding="{Binding Label, Mode=OneWay}" FontWeight="SemiBold" />
-                                    <DataGridTextColumn Header="Endereço" Binding="{Binding AddressText, Mode=OneWay}" FontFamily="Consolas" />
-                                    <DataGridTextColumn Header="Tipo" Binding="{Binding DataType, Mode=OneWay}" />
-                                    <DataGridTextColumn Header="Ordem" Binding="{Binding ByteOrderText, Mode=OneWay}" />
-                                    <DataGridTextColumn Header="Valor" Binding="{Binding ValueText, Mode=OneWay}" Width="150" FontWeight="SemiBold" FontFamily="Consolas" />
-                                    <DataGridTextColumn Header="Escala" Binding="{Binding ScalingText, Mode=OneWay}" />
-                                    <DataGridTemplateColumn Header="Alarme" SortMemberPath="AlarmState">
+                                    <DataGridTextColumn Header="Conexão" MinWidth="90" Binding="{Binding ConnectionName, Mode=OneWay}" />
+                                    <DataGridTextColumn Header="Nome" MinWidth="150" Binding="{Binding Label, Mode=OneWay}" FontWeight="SemiBold" />
+                                    <DataGridTextColumn Header="Endereço" MinWidth="170" Binding="{Binding AddressText, Mode=OneWay}" FontFamily="Consolas" />
+                                    <DataGridTextColumn Header="Tipo" MinWidth="70" Binding="{Binding DataType, Mode=OneWay}" />
+                                    <DataGridTextColumn Header="Ordem" MinWidth="60" Binding="{Binding ByteOrderText, Mode=OneWay}" />
+                                    <DataGridTextColumn Header="Valor" MinWidth="130" Binding="{Binding ValueText, Mode=OneWay}" Width="150" FontWeight="SemiBold" FontFamily="Consolas" />
+                                    <DataGridTextColumn Header="Escala" MinWidth="70" Binding="{Binding ScalingText, Mode=OneWay}" />
+                                    <DataGridTemplateColumn Header="Alarme" MinWidth="110" SortMemberPath="AlarmState">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal" ToolTip="{Binding AlarmLimitsText}">
@@ -440,8 +440,8 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="Tipo nativo" Binding="{Binding TypeName, Mode=OneWay}" />
-                                    <DataGridTemplateColumn Header="Qualidade">
+                                    <DataGridTextColumn Header="Tipo nativo" MinWidth="95" Binding="{Binding TypeName, Mode=OneWay}" />
+                                    <DataGridTemplateColumn Header="Qualidade" MinWidth="85">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <TextBlock Text="{Binding Quality}" FontWeight="SemiBold">
@@ -462,11 +462,11 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp, Mode=OneWay, StringFormat=HH:mm:ss.fff}" />
-                                    <DataGridTextColumn Header="Latência (ms)" Binding="{Binding LatencyMs, Mode=OneWay, StringFormat=F1}" />
-                                    <DataGridTextColumn Header="Ciclo (ms)" Binding="{Binding IntervalMs, Mode=OneWay}" />
-                                    <DataGridTextColumn Header="Leituras" Binding="{Binding ReadCount, Mode=OneWay}" />
-                                    <DataGridTextColumn Header="Erros" Binding="{Binding ErrorCount, Mode=OneWay}" />
+                                    <DataGridTextColumn Header="Timestamp" MinWidth="100" Binding="{Binding Timestamp, Mode=OneWay, StringFormat=HH:mm:ss.fff}" />
+                                    <DataGridTextColumn Header="Latência (ms)" MinWidth="100" Binding="{Binding LatencyMs, Mode=OneWay, StringFormat=F1}" />
+                                    <DataGridTextColumn Header="Ciclo (ms)" MinWidth="85" Binding="{Binding IntervalMs, Mode=OneWay}" />
+                                    <DataGridTextColumn Header="Leituras" MinWidth="75" Binding="{Binding ReadCount, Mode=OneWay}" />
+                                    <DataGridTextColumn Header="Erros" MinWidth="55" Binding="{Binding ErrorCount, Mode=OneWay}" />
                                     <DataGridTextColumn Header="Último erro / info" Binding="{Binding Error, Mode=OneWay}" Width="*" MinWidth="220">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">

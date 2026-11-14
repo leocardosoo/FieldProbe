@@ -173,10 +173,10 @@ public sealed class WatchItemViewModel : ObservableObject
 
     public string AlarmText => _alarmState switch
     {
-        AlarmState.High => $"ALTO > {FormatLimit(_alarmHigh)}",
-        AlarmState.Low => $"BAIXO < {FormatLimit(_alarmLow)}",
-        AlarmState.CommFailure => "FALHA DE COMUNICAÇÃO",
-        _ => HasAlarms ? $"normal ({AlarmLimitsText})" : string.Empty
+        AlarmState.High => "Alto",
+        AlarmState.Low => "Baixo",
+        AlarmState.CommFailure => "Sem comunicação",
+        _ => HasAlarms ? "Normal" : string.Empty
     };
 
     public string AlarmLimitsText

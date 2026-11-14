@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>FieldProbe.Drivers.Siemens</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Protocolo S7 (ISO-on-TCP) para S7-200/300/400/1200/1500 · licença MIT -->
+    <PackageReference Include="S7netplus" Version="0.20.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FieldProbe.Core\FieldProbe.Core.csproj" />
+  </ItemGroup>
+
+</Project>

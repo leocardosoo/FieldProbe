@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>FieldProbe.App</RootNamespace>
+    <AssemblyName>FieldProbe</AssemblyName>
+    <ApplicationIcon>Assets\fieldprobe.ico</ApplicationIcon>
+    <AssemblyTitle>FieldProbe - Industrial Protocol Tester</AssemblyTitle>
+    <Description>Teste de comunicação com devices industriais: Modbus, OPC UA, MQTT, Siemens S7 e EtherNet/IP.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Criptografia de senhas salvas no projeto (DPAPI do Windows) · MIT -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FieldProbe.Core\FieldProbe.Core.csproj" />
+    <ProjectReference Include="..\FieldProbe.Drivers.Modbus\FieldProbe.Drivers.Modbus.csproj" />
+    <ProjectReference Include="..\FieldProbe.Drivers.OpcUa\FieldProbe.Drivers.OpcUa.csproj" />
+    <ProjectReference Include="..\FieldProbe.Drivers.Mqtt\FieldProbe.Drivers.Mqtt.csproj" />
+    <ProjectReference Include="..\FieldProbe.Drivers.Siemens\FieldProbe.Drivers.Siemens.csproj" />
+    <ProjectReference Include="..\FieldProbe.Drivers.EtherNetIP\FieldProbe.Drivers.EtherNetIP.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\fieldprobe.ico" />
+    <Resource Include="Assets\fieldprobe-256.png" />
+    <Content Include="..\..\THIRD-PARTY-NOTICES.md" Link="THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

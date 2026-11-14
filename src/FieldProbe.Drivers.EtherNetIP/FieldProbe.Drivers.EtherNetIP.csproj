@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>FieldProbe.Drivers.EtherNetIP</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- EtherNet/IP (CIP) para Allen-Bradley/Rockwell e Omron · MPL-2.0 (uso comercial permitido, sem modificar a lib) -->
+    <PackageReference Include="libplctag" Version="1.5.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FieldProbe.Core\FieldProbe.Core.csproj" />
+  </ItemGroup>
+
+</Project>

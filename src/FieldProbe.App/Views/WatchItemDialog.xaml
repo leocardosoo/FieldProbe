@@ -1,0 +1,154 @@
+<Window x:Class="FieldProbe.App.Views.WatchItemDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Editar item" Width="560" SizeToContent="Height" MaxHeight="940" WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize" ShowInTaskbar="False"
+        FontFamily="Segoe UI" FontSize="12.5" Background="{StaticResource WindowBackground}">
+
+    <Window.Resources>
+        <Style x:Key="Label" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+        </Style>
+    </Window.Resources>
+
+    <DockPanel Margin="16">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button Content="Cancelar" IsCancel="True" MinWidth="90" />
+            <Button Content="Salvar" Style="{StaticResource PrimaryButton}" IsDefault="True" MinWidth="90" Margin="0" Click="Save_Click" />
+        </StackPanel>
+
+        <TextBlock DockPanel.Dock="Bottom" Text="{Binding Error}" Foreground="{StaticResource BadBrush}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,10,0,0" />
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="0,0,4,0">
+            <TextBlock Text="{Binding ConnectionText}" Style="{StaticResource Muted}" Margin="0,0,0,10" />
+
+            <!-- Identificação -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="130" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.ColumnSpan="2" Text="Identificação" Style="{StaticResource SectionTitle}" />
+
+                    <TextBlock Grid.Row="1" Text="Nome" Style="{StaticResource Label}" />
+                    <TextBox Grid.Row="1" Grid.Column="1" Margin="0,3" Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Ex.: Temperatura do forno. Vazio = mostra o endereço." />
+
+                    <TextBlock Grid.Row="2" Text="Endereço" Style="{StaticResource Label}" />
+                    <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,3">
+                        <TextBox Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas" />
+                        <TextBlock Text="{Binding AddressHelp}" Style="{StaticResource Muted}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Leitura -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="130" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.ColumnSpan="2" Text="Leitura" Style="{StaticResource SectionTitle}" />
+
+                    <TextBlock Grid.Row="1" Text="Tipo / Ordem" Style="{StaticResource Label}" />
+                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,3">
+                        <ComboBox Width="110" ItemsSource="{Binding DataTypes}" SelectedItem="{Binding DataType}" Margin="0,0,8,0" />
+                        <ComboBox Width="80" ItemsSource="{Binding ByteOrders}" SelectedItem="{Binding ByteOrder}" IsEnabled="{Binding ByteOrderEnabled}" Margin="0,0,8,0" />
+                        <Button Command="{Binding DetectCommand}" Visibility="{Binding CanDetect, Converter={StaticResource BoolToVis}}"
+                                ToolTip="Lê os registradores e mostra todas as interpretações possíveis">
+                            <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE721;" FontSize="12" /><TextBlock Text="Detectar tipo" /></StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="2" Text="Tamanho" Style="{StaticResource Label}" />
+                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,3">
+                        <TextBox Width="60" Text="{Binding Length, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="strings: nº de registradores (Modbus) ou caracteres (S7)" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="3" Text="Ciclo (ms)" Style="{StaticResource Label}" />
+                    <TextBox Grid.Row="3" Grid.Column="1" Width="80" HorizontalAlignment="Left" Margin="0,3" Text="{Binding IntervalMs, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+            </Border>
+
+            <!-- Engenharia -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="130" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.ColumnSpan="2" Text="Escala e unidade" Style="{StaticResource SectionTitle}" />
+
+                    <TextBlock Grid.Row="1" Text="Escala (×)" Style="{StaticResource Label}" />
+                    <TextBox Grid.Row="1" Grid.Column="1" Width="120" HorizontalAlignment="Left" Margin="0,3" Text="{Binding ScaleText, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Grid.Row="2" Text="Offset (+)" Style="{StaticResource Label}" />
+                    <TextBox Grid.Row="2" Grid.Column="1" Width="120" HorizontalAlignment="Left" Margin="0,3" Text="{Binding OffsetText, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Grid.Row="3" Text="Unidade" Style="{StaticResource Label}" />
+                    <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,3">
+                        <TextBox Width="120" HorizontalAlignment="Left" Text="{Binding Unit, UpdateSourceTrigger=PropertyChanged}" ToolTip="Ex.: °C, bar, rpm, A, kWh" />
+                        <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,0"
+                                   Text="Valor exibido = valor bruto × escala + offset. Ex.: registrador 724 com escala 0,1 → 72,4 °C. Na escrita, o valor digitado é convertido de volta para o bruto." />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Alarmes -->
+            <Border Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="130" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.ColumnSpan="2" Text="Alarmes" Style="{StaticResource SectionTitle}" />
+
+                    <TextBlock Grid.Row="1" Text="Limite alto (&gt;)" Style="{StaticResource Label}" />
+                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,3">
+                        <TextBox Width="120" Text="{Binding AlarmHighText, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="vazio = desligado · usa o valor com escala" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="2" Text="Limite baixo (&lt;)" Style="{StaticResource Label}" />
+                    <TextBox Grid.Row="2" Grid.Column="1" Width="120" HorizontalAlignment="Left" Margin="0,3" Text="{Binding AlarmLowText, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <CheckBox Grid.Row="3" Grid.Column="1" Margin="0,6,0,0" IsChecked="{Binding AlarmOnCommFailure}"
+                              Content="Alarmar quando perder a comunicação com este item" />
+                </Grid>
+            </Border>
+        </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

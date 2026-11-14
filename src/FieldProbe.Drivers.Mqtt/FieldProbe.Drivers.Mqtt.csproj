@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>FieldProbe.Drivers.Mqtt</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FieldProbe.Core\FieldProbe.Core.csproj" />
+  </ItemGroup>
+
+</Project>

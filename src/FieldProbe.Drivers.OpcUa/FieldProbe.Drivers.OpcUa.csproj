@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>FieldProbe.Drivers.OpcUa</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Cliente OPC UA com licença MIT (permite uso comercial sem abrir o código).
+         Evitamos o stack da OPC Foundation, que é GPL 2.0 para não membros. -->
+    <PackageReference Include="Workstation.UaClient" Version="3.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FieldProbe.Core\FieldProbe.Core.csproj" />
+  </ItemGroup>
+
+</Project>

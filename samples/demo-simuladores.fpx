@@ -1,0 +1,132 @@
+{
+  "Product": "FieldProbe",
+  "FormatVersion": 1,
+  "Connections": [
+    {
+      "Name": "Simulador Modbus",
+      "Protocol": "Modbus TCP",
+      "Host": "127.0.0.1",
+      "Port": 502,
+      "TimeoutMs": 2000,
+      "Options": {
+        "UnitId": "1",
+        "BrowseCount": "10",
+        "AutoReconnect": "true"
+      }
+    },
+    {
+      "Name": "Simulador MQTT",
+      "Protocol": "MQTT",
+      "Host": "127.0.0.1",
+      "Port": 1883,
+      "TimeoutMs": 3000,
+      "Options": {
+        "ClientId": "",
+        "User": "",
+        "Password": "",
+        "UseTls": "false",
+        "AcceptAnyCertificate": "true",
+        "DiscoveryTopic": "#",
+        "Qos": "0",
+        "Retain": "false",
+        "KeepAlive": "30",
+        "AutoReconnect": "true"
+      }
+    },
+    {
+      "Name": "Simulador OPC UA",
+      "Protocol": "OPC UA",
+      "Host": "opc.tcp://127.0.0.1:4840/fieldprobe/",
+      "Port": 0,
+      "TimeoutMs": 4000,
+      "Options": {
+        "SecurityPolicy": "None",
+        "User": "",
+        "Password": "",
+        "AutoReconnect": "true"
+      }
+    }
+  ],
+  "WatchItems": [
+    {
+      "ConnectionName": "Simulador Modbus",
+      "Address": "IR:0",
+      "DataType": "UInt16",
+      "ByteOrder": "ABCD",
+      "Length": 1,
+      "IntervalMs": 500
+    },
+    {
+      "ConnectionName": "Simulador Modbus",
+      "Address": "IR:1",
+      "DataType": "Float32",
+      "ByteOrder": "ABCD",
+      "Length": 1,
+      "IntervalMs": 500
+    },
+    {
+      "ConnectionName": "Simulador Modbus",
+      "Address": "IR:3",
+      "DataType": "Float32",
+      "ByteOrder": "CDAB",
+      "Length": 1,
+      "IntervalMs": 500
+    },
+    {
+      "ConnectionName": "Simulador Modbus",
+      "Address": "HR:10",
+      "DataType": "String",
+      "ByteOrder": "ABCD",
+      "Length": 5,
+      "IntervalMs": 1000
+    },
+    {
+      "ConnectionName": "Simulador MQTT",
+      "Address": "fabrica/linha1/temperatura",
+      "DataType": "Auto",
+      "ByteOrder": "ABCD",
+      "Length": 1,
+      "IntervalMs": 1000
+    },
+    {
+      "ConnectionName": "Simulador MQTT",
+      "Address": "fabrica/linha2/dados|motor.rpm",
+      "DataType": "Auto",
+      "ByteOrder": "ABCD",
+      "Length": 1,
+      "IntervalMs": 1000
+    },
+    {
+      "ConnectionName": "Simulador MQTT",
+      "Address": "fabrica/+/status",
+      "DataType": "Auto",
+      "ByteOrder": "ABCD",
+      "Length": 1,
+      "IntervalMs": 1000
+    },
+    {
+      "ConnectionName": "Simulador OPC UA",
+      "Address": "ns=2;s=Linha1.Temperatura",
+      "DataType": "Auto",
+      "ByteOrder": "ABCD",
+      "Length": 1,
+      "IntervalMs": 500
+    },
+    {
+      "ConnectionName": "Simulador OPC UA",
+      "Address": "ns=2;s=Linha1.Setpoint",
+      "DataType": "Auto",
+      "ByteOrder": "ABCD",
+      "Length": 1,
+      "IntervalMs": 500
+    },
+    {
+      "ConnectionName": "Simulador OPC UA",
+      "Address": "ns=2;s=Linha2.Motor.Rpm",
+      "DataType": "Auto",
+      "ByteOrder": "ABCD",
+      "Length": 1,
+      "IntervalMs": 500
+    }
+  ]
+}

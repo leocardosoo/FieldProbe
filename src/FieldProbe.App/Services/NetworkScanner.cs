@@ -32,6 +32,7 @@ public sealed class ScanResult
     public required string Ip { get; init; }
     public string Hostname { get; set; } = string.Empty;
     public string Mac { get; set; } = string.Empty;
+    public string Vendor { get; set; } = string.Empty;
     public List<int> OpenPorts { get; } = new();
     public List<string> Protocols { get; } = new();
     public List<string> Identity { get; } = new();
@@ -41,7 +42,17 @@ public sealed class ScanResult
 
     public string PortsText => string.Join(", ", OpenPorts.OrderBy(p => p));
     public string ProtocolsText => string.Join(", ", Protocols.Distinct());
-    public string IdentityText => Identity.Count == 0 ? "-" : string.Join(" · ", Identity);
+    public string IdentityText
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (Vendor.Length > 0 && !Identity.Any(i => i.Contains(Vendor, StringComparison.OrdinalIgnoreCase)))
+                parts.Add(Vendor);
+            parts.AddRange(Identity);
+            return parts.Count == 0 ? "-" : string.Join(" · ", parts);
+        }
+    }
 
     public DiagnosticSeverity WorstSeverity => Findings.Count == 0 ? DiagnosticSeverity.Info : Findings.Max(f => f.Severity);
 
@@ -170,6 +181,7 @@ public sealed class NetworkScanner
         var result = new ScanResult { Ip = ip };
         result.OpenPorts.AddRange(open);
         result.Mac = await Task.Run(() => ArpLookup(host), ct).ConfigureAwait(false);
+        result.Vendor = MacVendors.Lookup(result.Mac) ?? string.Empty;
         result.Hostname = await ReverseDnsAsync(host, ct).ConfigureAwait(false);
 
         var probeTimeout = Math.Max(1500, timeoutMs * 4);
@@ -247,10 +259,31 @@ public sealed class NetworkScanner
             case 4840:
                 var isUa = await Probes.OpcUaHelloAsync(ip, 4840, timeoutMs, ct).ConfigureAwait(false);
                 r.Protocols.Add(isUa ? "OPC UA" : "porta 4840 (sem resposta OPC UA)");
-                if (isUa)
+                if (!isUa) break;
+
+                var ua = await OpcUaDiscovery.GetServerInfoAsync(ip, 4840, timeoutMs, ct).ConfigureAwait(false);
+                if (ua is null)
+                {
                     r.Findings.Add(new(DiagnosticSeverity.Info, "OPC UA",
                         "Servidor OPC UA encontrado. Conecte e rode o Diagnóstico para verificar política de segurança e login anônimo.",
                         "Exigir Basic256Sha256 ou superior, desabilitar login anônimo e gerenciar a lista de certificados confiáveis."));
+                    break;
+                }
+
+                var uaName = !string.IsNullOrWhiteSpace(ua.ApplicationName) ? ua.ApplicationName : ua.ProductUri;
+                if (!string.IsNullOrWhiteSpace(uaName)) r.Identity.Add($"OPC UA: {uaName}");
+
+                r.Findings.Add(new(DiagnosticSeverity.Info, "OPC UA",
+                    $"Servidor OPC UA '{uaName ?? "-"}' · políticas oferecidas: {string.Join(", ", ua.Policies)}.",
+                    "Manter apenas Basic256Sha256 ou superior e gerenciar a lista de certificados confiáveis."));
+                if (ua.AllowsNoSecurity)
+                    r.Findings.Add(new(DiagnosticSeverity.Warning, "OPC UA",
+                        "O servidor aceita conexões sem criptografia nem assinatura (SecurityPolicy None).",
+                        "Desabilitar o endpoint None e exigir Sign ou SignAndEncrypt."));
+                if (ua.AllowsAnonymous)
+                    r.Findings.Add(new(DiagnosticSeverity.Warning, "OPC UA",
+                        "O servidor aceita login anônimo: qualquer cliente na rede pode ler (e talvez escrever).",
+                        "Desabilitar o login anônimo e exigir usuário/senha ou certificado."));
                 break;
 
             case 1883:

@@ -4,6 +4,14 @@
         Title="Scanner de rede OT" Width="1180" Height="780" MinWidth="900" MinHeight="560"
         WindowStartupLocation="CenterOwner" Icon="/Assets/fieldprobe.ico"
         FontFamily="Segoe UI" FontSize="12.5" Background="{StaticResource WindowBackground}">
+    <Window.Resources>
+        <!-- Texto longo: corta com "…" e mostra tudo no tooltip -->
+        <Style x:Key="TrimCell" TargetType="TextBlock">
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}" />
+            <Setter Property="ToolTipService.ShowDuration" Value="30000" />
+        </Style>
+    </Window.Resources>
     <DockPanel Margin="12">
 
         <!-- Configuração -->
@@ -95,11 +103,11 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         <DataGridTextColumn Header="IP" Binding="{Binding Ip, Mode=OneWay}" Width="115" FontFamily="Consolas" FontWeight="SemiBold" />
-                        <DataGridTextColumn Header="Hostname" Binding="{Binding Hostname, Mode=OneWay}" Width="130" />
-                        <DataGridTextColumn Header="MAC" Binding="{Binding Mac, Mode=OneWay}" Width="130" FontFamily="Consolas" />
-                        <DataGridTextColumn Header="Protocolos" Binding="{Binding ProtocolsText, Mode=OneWay}" Width="190" />
-                        <DataGridTextColumn Header="Identificação" Binding="{Binding IdentityText, Mode=OneWay}" Width="*" />
-                        <DataGridTextColumn Header="Portas" Binding="{Binding PortsText, Mode=OneWay}" Width="120" FontFamily="Consolas" />
+                        <DataGridTextColumn Header="Hostname" Binding="{Binding Hostname, Mode=OneWay}" Width="130" ElementStyle="{StaticResource TrimCell}" />
+                        <DataGridTextColumn Header="MAC" Binding="{Binding Mac, Mode=OneWay}" Width="130" FontFamily="Consolas" ElementStyle="{StaticResource TrimCell}" />
+                        <DataGridTextColumn Header="Protocolos" Binding="{Binding ProtocolsText, Mode=OneWay}" Width="190" ElementStyle="{StaticResource TrimCell}" />
+                        <DataGridTextColumn Header="Identificação" Binding="{Binding IdentityText, Mode=OneWay}" Width="*" MinWidth="160" ElementStyle="{StaticResource TrimCell}" />
+                        <DataGridTextColumn Header="Portas" Binding="{Binding PortsText, Mode=OneWay}" Width="120" FontFamily="Consolas" ElementStyle="{StaticResource TrimCell}" />
                         <DataGridTextColumn Header="Achados" Binding="{Binding FindingsText, Mode=OneWay}" Width="150" />
                     </DataGrid.Columns>
                 </DataGrid>
@@ -114,6 +122,8 @@
                         <Run Text="Achados ·" />
                         <Run Text="{Binding SelectedResult.Ip, Mode=OneWay}" />
                     </TextBlock>
+                    <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,2,0,8" Foreground="#57606A"
+                               Text="{Binding SelectedResult.IdentityText, Mode=OneWay}" />
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding SelectedResult.Findings}">
                             <ItemsControl.ItemTemplate>

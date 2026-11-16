@@ -46,6 +46,7 @@ Também inclui:
 | Modbus TCP | `python tools/modbus_sim.py` (sem dependências) | Modbus TCP · 127.0.0.1:502 |
 | MQTT (broker + devices) | `python tools/mqtt_sim.py` (sem dependências) | MQTT · 127.0.0.1:1883 |
 | OPC UA | `pip install asyncua` e depois `python tools/opcua_sim.py` | OPC UA · `opc.tcp://127.0.0.1:4840/fieldprobe/` |
+| PLC | `python tools/s7_sim.py` (sem dependências) | PLC · 127.0.0.1:102 |
 | Projeto pronto | abra `samples/demo-simuladores.fpx` e clique em **Conectar todas** | Modbus + MQTT + OPC UA |
 | CLI rápida | `python tools/fieldprobe_cli.py modbus 127.0.0.1 r HR:0` | (terminal) |
 

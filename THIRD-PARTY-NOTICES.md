@@ -2,7 +2,7 @@ FieldProbe — Componentes de terceiros
 =====================================
 
 O FieldProbe usa os componentes abaixo. Cada um continua sob a sua própria licença.
-Antes de cada release, confira a lista completa com:
+confira a lista completa com:
     dotnet list src/FieldProbe.App/FieldProbe.App.csproj package --include-transitive
 e inclua o texto integral de cada licença na pasta do instalador.
 

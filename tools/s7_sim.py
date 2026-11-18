@@ -11,7 +11,13 @@ O que ele responde:
     - COTP (ISO-on-TCP) e Setup Communication, em qualquer rack/slot;
     - identificação da CPU (SZL 0x0011 e 0x001C): modelo, código de pedido, firmware,
       número de série e nome, igual ao "Accessible devices" do TIA Portal;
+    - modo de operação RUN/STOP (SZL 0x0424) e buffer de diagnóstico (SZL 0x01A0);
     - leitura e escrita de variáveis (PUT/GET) nas áreas DB, M, I e Q.
+
+Comandos no terminal enquanto ele roda (digite e tecle Enter):
+    stop   -> CPU vai para STOP (os valores param de mudar)
+    run    -> CPU volta para RUN
+    erro   -> simula falha num módulo de I/O: grava o erro no buffer e a CPU vai para STOP
 
 Variáveis do DB1 (tipo de dado entre parênteses):
     DB1.DBW0    Contador     (INT)   incrementa a cada 0,5 s
@@ -24,6 +30,7 @@ Variáveis do DB1 (tipo de dado entre parênteses):
 """
 
 import argparse
+import datetime
 import math
 import random
 import socket
@@ -38,6 +45,40 @@ CPUS = {
 }
 
 AREAS = {0x81: "I", 0x82: "Q", 0x83: "M", 0x84: "DB"}
+
+
+def bcd_time(moment):
+    """DATE_AND_TIME do S7 (8 bytes BCD)."""
+    def b(v):
+        return ((v // 10) << 4) | (v % 10)
+    ms = moment.microsecond // 1000
+    weekday = moment.isoweekday() % 7 + 1
+    return bytes([b(moment.year % 100), b(moment.month), b(moment.day), b(moment.hour), b(moment.minute),
+                  b(moment.second), b(ms // 10), ((ms % 10) << 4) | weekday])
+
+
+class CpuState:
+    """Modo de operação e buffer de diagnóstico simulados."""
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.running = True
+        now = datetime.datetime.now()
+        self.events = [(0x4302, now), (0x4301, now - datetime.timedelta(seconds=2))]  # mais recente primeiro
+
+    def add(self, event_id):
+        with self.lock:
+            self.events.insert(0, (event_id, datetime.datetime.now()))
+            del self.events[50:]
+
+    def set_running(self, running, event_ids):
+        for event_id in event_ids:
+            self.add(event_id)
+        with self.lock:
+            self.running = running
+
+
+CPU_STATE = CpuState()
 
 
 class PlcMemory:
@@ -56,6 +97,9 @@ class PlcMemory:
         counter = 0
         start = time.time()
         while True:
+            if not CPU_STATE.running:  # em STOP o programa não roda: valores congelados
+                time.sleep(0.5)
+                continue
             t = time.time() - start
             with self.lock:
                 db1 = self.db[1]
@@ -74,7 +118,7 @@ def tpkt(payload):
     return struct.pack(">BBH", 3, 0, len(body) + 4) + body
 
 
-def szl_records(szl_id, cpu, name):
+def szl_records(szl_id, cpu, name, index=0):
     major, minor, patch = cpu["fw"]
     if szl_id == 0x0011:
         def module(index, mlfb, ausbg, ausbe):
@@ -99,6 +143,21 @@ def szl_records(szl_id, cpu, name):
             text(11, "Linha 3"),
         ]
         return 34, records
+    if szl_id == 0x0424:
+        with CPU_STATE.lock:
+            running = CPU_STATE.running
+            last_id, last_time = CPU_STATE.events[0]
+        mode = 0x08 if running else 0x04
+        previous = 0x04 if running else 0x08
+        record = struct.pack(">HBB", last_id, 0xFF, (previous << 4) | mode) + bytes(8) + bcd_time(last_time)
+        return 20, [record]
+    if szl_id in (0x00A0, 0x01A0):
+        with CPU_STATE.lock:
+            events = list(CPU_STATE.events)
+        if szl_id == 0x01A0:
+            events = events[:max(1, index)]
+        records = [struct.pack(">HBBHHI", eid, 0x01, 0x01, 0, 0, 0) + bcd_time(when) for eid, when in events]
+        return 20, records
     return None, []
 
 
@@ -112,7 +171,7 @@ def handle_userdata(s7, cpu, name):
         return None  # só tratamos "CPU functions · Read SZL"
 
     szl_id, index = struct.unpack(">HH", data[4:8])
-    record_len, records = szl_records(szl_id, cpu, name)
+    record_len, records = szl_records(szl_id, cpu, name, index)
     resp_params = bytes([0x00, 0x01, 0x12, 0x08, 0x12, 0x84, 0x01, sequence, 0x00, 0x00, 0x00, 0x00])
     if record_len is None:
         resp_data = b"\xd5\x00\x00\x00"  # SZL não existe
@@ -245,6 +304,26 @@ def client_thread(conn, peer, memory, cpu, name, verbose):
         print(f"[-] Cliente desconectado: {peer}")
 
 
+def console_commands():
+    """Lê comandos do terminal para mudar o estado da CPU simulada."""
+    while True:
+        try:
+            command = input().strip().lower()
+        except EOFError:
+            return
+        if command == "stop":
+            CPU_STATE.set_running(False, [0x4304])
+            print("    CPU em STOP (comando do PG)")
+        elif command == "run":
+            CPU_STATE.set_running(True, [0x4301, 0x4302])
+            print("    CPU em RUN")
+        elif command == "erro":
+            CPU_STATE.set_running(False, [0x2942, 0x4563])
+            print("    Falha de acesso à periferia registrada · CPU em STOP")
+        elif command:
+            print("    Comandos: stop · run · erro")
+
+
 def main():
     parser = argparse.ArgumentParser(description="CLP Siemens S7 simulado para testes")
     parser.add_argument("--host", default="0.0.0.0")
@@ -265,6 +344,9 @@ def main():
     major, minor, patch = cpu["fw"]
     print(f"Siemens {cpu['type']} ({cpu['order']} · FW V{major}.{minor}.{patch}) simulado em {args.host}:{args.port} · Ctrl+C para sair")
     print("Variáveis: DB1.DBW0 contador · DB1.DBD2 temperatura · DB1.DBD6 pressão · DB1.DBX10.0 em operação · DB1.DBD12 setpoint (escrita)")
+
+    threading.Thread(target=console_commands, daemon=True).start()
+    print("Comandos: stop · run · erro (digite e tecle Enter)")
 
     try:
         while True:

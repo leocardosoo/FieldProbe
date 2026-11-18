@@ -11,6 +11,49 @@
             <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}" />
             <Setter Property="ToolTipService.ShowDuration" Value="30000" />
         </Style>
+        <!-- Link discreto (Industriais | Todas | Nenhuma); fica em negrito quando é o perfil ativo -->
+        <Style x:Key="LinkButton" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="#0F6CBD" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <TextBlock x:Name="Txt" Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}" Background="Transparent" Padding="2,0" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Txt" Property="TextDecorations" Value="Underline" />
+                            </Trigger>
+                            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+                                <Setter TargetName="Txt" Property="FontWeight" Value="SemiBold" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PortGroup" TargetType="Border">
+            <Setter Property="BorderBrush" Value="#D8DEE4" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="10,6,10,4" />
+        </Style>
+
+        <Style x:Key="GroupTitle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#57606A" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+
+        <!-- Uma porta: checkbox + número alinhado + nome -->
+        <DataTemplate x:Key="PortItemTemplate">
+            <CheckBox IsChecked="{Binding IsSelected}" Margin="0,2,12,2" VerticalContentAlignment="Center">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding Definition.Port}" FontFamily="Consolas" Foreground="#8C959F" Width="44" />
+                    <TextBlock Text="{Binding Definition.Name}" />
+                </StackPanel>
+            </CheckBox>
+        </DataTemplate>
     </Window.Resources>
     <DockPanel Margin="12">
 
@@ -38,22 +81,52 @@
                     <Button Content="Parar" Command="{Binding StopCommand}" />
                 </WrapPanel>
 
-                <DockPanel Margin="0,10,0,0">
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
-                        <Button Content="Só industriais" Style="{StaticResource ToolButton}" Command="{Binding SelectIndustrialCommand}" />
-                        <Button Content="Todas" Style="{StaticResource ToolButton}" Command="{Binding SelectAllCommand}" />
+                <!-- Portas a verificar -->
+                <DockPanel Margin="0,12,0,6">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="Industriais" Style="{StaticResource LinkButton}" Tag="{Binding IsIndustrialPreset}"
+                                Command="{Binding SelectIndustrialCommand}" ToolTip="Só os protocolos de automação" />
+                        <TextBlock Text="|" Foreground="#C4CBD2" Margin="6,0" />
+                        <Button Content="Todas" Style="{StaticResource LinkButton}" Tag="{Binding IsAllPreset}" Command="{Binding SelectAllCommand}" />
+                        <TextBlock Text="|" Foreground="#C4CBD2" Margin="6,0" />
+                        <Button Content="Nenhuma" Style="{StaticResource LinkButton}" Tag="{Binding IsNonePreset}" Command="{Binding SelectNoneCommand}" />
                     </StackPanel>
-                    <ItemsControl ItemsSource="{Binding Ports}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <CheckBox Content="{Binding Label}" IsChecked="{Binding IsSelected}" Margin="0,2,14,2" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <TextBlock VerticalAlignment="Center">
+                        <Run Text="Portas a verificar" FontWeight="SemiBold" />
+                        <Run Text="·" Foreground="#8C959F" />
+                        <Run Text="{Binding SelectedPortsText, Mode=OneWay}" Foreground="#57606A" />
+                    </TextBlock>
                 </DockPanel>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3*" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="2*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource PortGroup}">
+                        <StackPanel>
+                            <TextBlock Text="Protocolos industriais" Style="{StaticResource GroupTitle}" />
+                            <ItemsControl ItemsSource="{Binding IndustrialPorts}" ItemTemplate="{StaticResource PortItemTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2" Style="{StaticResource PortGroup}">
+                        <StackPanel>
+                            <TextBlock Text="TI e acesso remoto" Style="{StaticResource GroupTitle}" />
+                            <ItemsControl ItemsSource="{Binding ItPorts}" ItemTemplate="{StaticResource PortItemTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </Grid>
 
                 <ProgressBar Height="6" Margin="0,10,0,4" Maximum="100" Value="{Binding Progress, Mode=OneWay}" Foreground="{StaticResource AccentBrush}" />
                 <TextBlock Text="{Binding StatusText}" Style="{StaticResource Muted}" />

@@ -48,6 +48,13 @@ public sealed class ScannerViewModel : ObservableObject
         _completed = completed;
         _rangeText = IpRangeParser.SuggestLocalRange();
         Ports = NetworkScanner.KnownPorts.Select(p => new PortOption(p)).ToList();
+        IndustrialPorts = Ports.Where(p => p.Definition.Industrial).ToList();
+        ItPorts = Ports.Where(p => !p.Definition.Industrial).ToList();
+        foreach (var port in Ports)
+            port.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(PortOption.IsSelected)) RaisePortSelection();
+            };
 
         StartCommand = new AsyncRelayCommand(ScanAsync, ex => StatusText = $"Erro: {ex.Message}", () => !IsRunning);
         StopCommand = new RelayCommand(() => _cts?.Cancel(), () => IsRunning);
@@ -61,11 +68,30 @@ public sealed class ScannerViewModel : ObservableObject
         {
             foreach (var p in Ports) p.IsSelected = true;
         });
+        SelectNoneCommand = new RelayCommand(() =>
+        {
+            foreach (var p in Ports) p.IsSelected = false;
+        });
     }
 
     public ObservableCollection<ScanResult> Results { get; }
 
     public IReadOnlyList<PortOption> Ports { get; }
+    public IReadOnlyList<PortOption> IndustrialPorts { get; }
+    public IReadOnlyList<PortOption> ItPorts { get; }
+
+    public string SelectedPortsText => $"{Ports.Count(p => p.IsSelected)} de {Ports.Count} selecionadas";
+    public bool IsIndustrialPreset => Ports.All(p => p.IsSelected == p.Definition.Industrial);
+    public bool IsAllPreset => Ports.All(p => p.IsSelected);
+    public bool IsNonePreset => Ports.All(p => !p.IsSelected);
+
+    private void RaisePortSelection()
+    {
+        OnPropertyChanged(nameof(SelectedPortsText));
+        OnPropertyChanged(nameof(IsIndustrialPreset));
+        OnPropertyChanged(nameof(IsAllPreset));
+        OnPropertyChanged(nameof(IsNonePreset));
+    }
 
     public ICommand StartCommand { get; }
     public ICommand StopCommand { get; }
@@ -73,6 +99,7 @@ public sealed class ScannerViewModel : ObservableObject
     public ICommand ExportCommand { get; }
     public ICommand SelectIndustrialCommand { get; }
     public ICommand SelectAllCommand { get; }
+    public ICommand SelectNoneCommand { get; }
 
     public string RangeText { get => _rangeText; set => Set(ref _rangeText, value ?? string.Empty); }
     public int TimeoutMs { get => _timeoutMs; set => Set(ref _timeoutMs, Math.Clamp(value, 50, 10000)); }

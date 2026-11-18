@@ -93,7 +93,8 @@ public sealed record TagValue(
     DateTime Timestamp,
     TimeSpan Latency,
     string? Error = null,
-    string? TypeName = null);
+    string? TypeName = null,
+    bool DeviceFault = false);
 
 /// <summary>Nó da árvore de navegação.</summary>
 public sealed class TagNode

@@ -471,6 +471,20 @@ public sealed class EtherNetIpDriver : DriverBase, IDiagnosticsProvider
         public TagFailedException(string message) : base(message) { }
     }
 
+    protected override bool SupportsHealthCheck => true;
+
+    /// <summary>Consulta o objeto Identity (ListIdentity): falha grave do controlador vira qualidade Bad nas leituras.</summary>
+    protected override async Task<string?> CheckDeviceHealthAsync(CancellationToken ct)
+    {
+        var s = Settings;
+        if (s is null) return null;
+        var id = await ListIdentity.QueryAsync(s.Host, s.Port > 0 ? s.Port : 44818, s.TimeoutMs, null, ct).ConfigureAwait(false);
+        _identity = id;
+        return id.State is 4 or 5 || (id.Status & 0x0C00) != 0
+            ? $"Controlador em falha grave ({id.StateText}): o programa pode estar parado"
+            : null;
+    }
+
     private string Explain(Exception ex, string tagName)
     {
         var message = ex.GetBaseException().Message;

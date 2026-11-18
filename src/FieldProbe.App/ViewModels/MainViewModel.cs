@@ -333,7 +333,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             AlarmState.High => $"ALARME ALTO (> {item.AlarmHigh?.ToString("G6")})",
             AlarmState.Low => $"ALARME BAIXO (< {item.AlarmLow?.ToString("G6")})",
             AlarmState.CommFailure => "FALHA DE COMUNICAÇÃO",
-            _ => previous == AlarmState.CommFailure ? "Comunicação restabelecida" : "Retornou ao normal"
+            AlarmState.DeviceFault => $"EQUIPAMENTO EM FALHA: {item.Error}",
+            _ => previous switch
+            {
+                AlarmState.CommFailure => "Comunicação restabelecida",
+                AlarmState.DeviceFault => "Equipamento voltou a rodar",
+                _ => "Retornou ao normal"
+            }
         };
 
         Alarms.Insert(0, new AlarmEvent(DateTime.Now, item.ConnectionName, item.Label, item.AddressText, current, description, value));

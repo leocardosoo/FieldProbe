@@ -12,7 +12,8 @@ public enum AlarmState
     Normal,
     High,
     Low,
-    CommFailure
+    CommFailure,
+    DeviceFault
 }
 
 /// <summary>Uma linha da watch list: nome amigável, escala/unidade, alarmes e histórico para a tendência.</summary>
@@ -193,6 +194,7 @@ public sealed class WatchItemViewModel : ObservableObject
         AlarmState.High => "Alto",
         AlarmState.Low => "Baixo",
         AlarmState.CommFailure => "Sem comunicação",
+        AlarmState.DeviceFault => "Equip. em falha",
         _ => HasAlarms ? "Normal" : string.Empty
     };
 
@@ -234,7 +236,7 @@ public sealed class WatchItemViewModel : ObservableObject
         var next = _alarmState;
         if (sample.Quality == Quality.Bad)
         {
-            if (_alarmOnCommFailure) next = AlarmState.CommFailure;
+            if (_alarmOnCommFailure) next = sample.DeviceFault ? AlarmState.DeviceFault : AlarmState.CommFailure;
         }
         else if (sample.Quality == Quality.Good && sample.Value is not null && TryNumeric(sample.Value, out var numeric))
         {
@@ -244,7 +246,7 @@ public sealed class WatchItemViewModel : ObservableObject
                  : _alarmLow.HasValue && numeric < _alarmLow.Value ? AlarmState.Low
                  : AlarmState.Normal;
         }
-        else if (sample.Quality == Quality.Good && _alarmState == AlarmState.CommFailure)
+        else if (sample.Quality == Quality.Good && _alarmState is AlarmState.CommFailure or AlarmState.DeviceFault)
         {
             next = AlarmState.Normal; // voltou a comunicar com valor não numérico
         }
@@ -463,7 +465,9 @@ public sealed class WatchItemViewModel : ObservableObject
         }
         else if (sample.Quality == Quality.Bad)
         {
-            ErrorCount++;
+            // Falha do equipamento (CPU em STOP): a comunicação funciona, então o valor é mostrado e não conta como erro.
+            if (sample.DeviceFault) Value = sample.Value;
+            else ErrorCount++;
         }
 
         if (HasAlarms) EvaluateAlarm(sample);

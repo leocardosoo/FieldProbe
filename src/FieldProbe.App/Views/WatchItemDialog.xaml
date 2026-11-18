@@ -145,7 +145,7 @@
                     <TextBox Grid.Row="2" Grid.Column="1" Width="120" HorizontalAlignment="Left" Margin="0,3" Text="{Binding AlarmLowText, UpdateSourceTrigger=PropertyChanged}" />
 
                     <CheckBox Grid.Row="3" Grid.Column="1" Margin="0,6,0,0" IsChecked="{Binding AlarmOnCommFailure}"
-                              Content="Alarmar quando perder a comunicação com este item" />
+                              Content="Alarmar quando perder a comunicação ou o equipamento entrar em falha (ex.: CPU em STOP)" />
                 </Grid>
             </Border>
         </StackPanel>

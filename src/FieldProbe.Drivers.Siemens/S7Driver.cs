@@ -16,6 +16,8 @@ public sealed class S7Driver : DriverBase, IDiagnosticsProvider
     public const string Protocol = "Siemens S7";
 
     private Plc? _plc;
+    private S7SystemClient? _health;
+    private bool _healthUnsupported;
 
     public override string ProtocolName => Protocol;
 
@@ -64,11 +66,48 @@ public sealed class S7Driver : DriverBase, IDiagnosticsProvider
         OnTrace($"Conectado · PDU negociada: {plc.MaxPDUSize} bytes", FrameDirection.Rx);
     }
 
-    protected override Task CloseAsync()
+    protected override async Task CloseAsync()
     {
         _plc?.Close();
         _plc = null;
-        return Task.CompletedTask;
+        var health = _health;
+        _health = null;
+        _healthUnsupported = false;
+        if (health is not null) await health.DisposeAsync().ConfigureAwait(false);
+    }
+
+    protected override bool SupportsHealthCheck => !_healthUnsupported;
+
+    /// <summary>Consulta o modo da CPU (RUN/STOP) por uma conexão de diagnóstico mantida aberta.</summary>
+    protected override async Task<string?> CheckDeviceHealthAsync(CancellationToken ct)
+    {
+        var s = Settings;
+        if (s is null) return null;
+        try
+        {
+            _health ??= await S7SystemClient.ConnectAsync(s.Host, s.Port > 0 ? s.Port : 102,
+                s.GetIntOption("Rack", 0), s.GetIntOption("Slot", 1), s.TimeoutMs, ct).ConfigureAwait(false);
+
+            return await _health.ReadCpuModeAsync(ct).ConfigureAwait(false) switch
+            {
+                S7CpuMode.Stop => "CPU em STOP: o programa não está rodando (valores congelados)",
+                S7CpuMode.Startup => "CPU em STARTUP (partida): valores ainda não atualizados",
+                S7CpuMode.Hold => "CPU em HOLD: programa pausado",
+                _ => null
+            };
+        }
+        catch (S7SzlException)
+        {
+            _healthUnsupported = true; // esta CPU não informa o modo por SZL: para de consultar
+            return null;
+        }
+        catch
+        {
+            var broken = _health;
+            _health = null;
+            if (broken is not null) await broken.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
     }
 
     public override Task<IReadOnlyList<TagNode>> BrowseAsync(TagNode? parent = null, CancellationToken ct = default)

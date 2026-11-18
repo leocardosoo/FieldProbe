@@ -11,6 +11,9 @@ public abstract class DriverBase : IProtocolDriver
 
     private readonly SemaphoreSlim _connectLock = new(1, 1);
     private DateTime _lastReconnectAttempt = DateTime.MinValue;
+    private volatile string? _deviceFault;
+    private DateTime _lastHealthCheck = DateTime.MinValue;
+    private int _healthCheckRunning;
 
     protected ConnectionSettings? Settings { get; private set; }
 
@@ -44,6 +47,62 @@ public abstract class DriverBase : IProtocolDriver
 
     protected abstract Task WriteCoreAsync(TagAddress address, object value, CancellationToken ct);
 
+    // ----- Saúde do equipamento (CPU em STOP, falha grave) -----
+
+    /// <summary>Verdadeiro se o driver sabe consultar o estado do equipamento.</summary>
+    protected virtual bool SupportsHealthCheck => false;
+
+    /// <summary>Intervalo entre consultas de estado (feitas em segundo plano, junto com as leituras).</summary>
+    protected virtual TimeSpan HealthCheckInterval => TimeSpan.FromSeconds(5);
+
+    /// <summary>Retorna a descrição da falha do equipamento, ou null se ele está rodando normalmente.</summary>
+    protected virtual Task<string?> CheckDeviceHealthAsync(CancellationToken ct) => Task.FromResult<string?>(null);
+
+    /// <summary>
+    /// Falha atual do equipamento: enquanto houver, as leituras continuam mas saem com qualidade Bad,
+    /// porque os valores não são atualizados pelo programa (ex.: CPU em STOP).
+    /// </summary>
+    public string? DeviceFault => _deviceFault;
+
+    private void SetDeviceFault(string? fault)
+    {
+        if (_deviceFault == fault) return;
+        var previous = _deviceFault;
+        _deviceFault = fault;
+        if (fault is not null) OnStatus($"Equipamento em falha: {fault}");
+        else if (previous is not null) OnStatus("Equipamento voltou a rodar normalmente");
+    }
+
+    private void MaybeCheckHealth()
+    {
+        if (!SupportsHealthCheck || DateTime.UtcNow - _lastHealthCheck < HealthCheckInterval) return;
+        if (Interlocked.Exchange(ref _healthCheckRunning, 1) == 1) return;
+        _lastHealthCheck = DateTime.UtcNow;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                SetDeviceFault(await CheckDeviceHealthAsync(cts.Token).ConfigureAwait(false));
+            }
+            catch
+            {
+                // Consulta de estado é best-effort: falha de comunicação já aparece nas leituras.
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _healthCheckRunning, 0);
+            }
+        });
+    }
+
+    private void ResetHealth()
+    {
+        _deviceFault = null;
+        _lastHealthCheck = DateTime.MinValue;
+    }
+
     /// <summary>Descrição do endpoint para mensagens de status.</summary>
     protected virtual string Endpoint(ConnectionSettings s) => s.Port > 0 ? $"{s.Host}:{s.Port}" : s.Host;
 
@@ -53,6 +112,7 @@ public abstract class DriverBase : IProtocolDriver
     {
         Settings = settings;
         SessionRequested = true;
+        ResetHealth();
         await _connectLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
@@ -77,6 +137,7 @@ public abstract class DriverBase : IProtocolDriver
     public async Task DisconnectAsync()
     {
         SessionRequested = false;
+        ResetHealth();
         await _connectLock.WaitAsync().ConfigureAwait(false);
         try
         {
@@ -144,10 +205,14 @@ public abstract class DriverBase : IProtocolDriver
         try
         {
             await EnsureConnectedAsync(ct).ConfigureAwait(false);
+            MaybeCheckHealth();
             var value = await ReadCoreAsync(address, ct).ConfigureAwait(false);
             sw.Stop();
             Statistics.RecordSuccess(sw.Elapsed);
-            return new TagValue(address, value, Quality.Good, DateTime.Now, sw.Elapsed, null, value?.GetType().Name);
+            var fault = _deviceFault;
+            return fault is null
+                ? new TagValue(address, value, Quality.Good, DateTime.Now, sw.Elapsed, null, value?.GetType().Name)
+                : new TagValue(address, value, Quality.Bad, DateTime.Now, sw.Elapsed, fault, value?.GetType().Name, DeviceFault: true);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

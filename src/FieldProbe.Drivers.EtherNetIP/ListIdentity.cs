@@ -24,6 +24,55 @@ public sealed record EipIdentity(
         _ => $"Vendor {VendorId}"
     };
 
+    /// <summary>Atributo State do objeto Identity.</summary>
+    public string StateText => State switch
+    {
+        0 => "inexistente",
+        1 => "em autoteste",
+        2 => "em espera (standby)",
+        3 => "operacional",
+        4 => "falha grave recuperável",
+        5 => "falha grave não recuperável",
+        255 => "padrão (não informado)",
+        _ => $"código {State}"
+    };
+
+    /// <summary>Palavra de Status do objeto Identity, bit a bit (ODVA, Volume 1, objeto Identity).</summary>
+    public string StatusText
+    {
+        get
+        {
+            var parts = new List<string>
+            {
+                ((Status >> 4) & 0x0F) switch
+                {
+                    0x0 => "autoteste ou status indefinido",
+                    0x1 => "atualização de firmware em andamento",
+                    0x2 => "pelo menos uma conexão de I/O com falha",
+                    0x3 => "nenhuma conexão de I/O estabelecida",
+                    0x4 => "configuração não volátil corrompida",
+                    0x5 => "falha grave",
+                    0x6 => "pelo menos uma conexão de I/O em RUN",
+                    0x7 => "conexões de I/O estabelecidas, todas em IDLE",
+                    var x => $"status estendido 0x{x:X}"
+                }
+            };
+            if ((Status & 0x0001) != 0) parts.Add("com dono (owned)");
+            if ((Status & 0x0004) != 0) parts.Add("configurado");
+            if ((Status & 0x0100) != 0) parts.Add("FALHA LEVE recuperável");
+            if ((Status & 0x0200) != 0) parts.Add("FALHA LEVE não recuperável");
+            if ((Status & 0x0400) != 0) parts.Add("FALHA GRAVE recuperável");
+            if ((Status & 0x0800) != 0) parts.Add("FALHA GRAVE não recuperável");
+            return string.Join(" · ", parts);
+        }
+    }
+
+    public DiagnosticSeverity StatusSeverity =>
+        State is 4 or 5 || (Status & 0x0C00) != 0 ? DiagnosticSeverity.Critical
+        : (Status & 0x0300) != 0 || ((Status >> 4) & 0x0F) is 0x2 or 0x4 or 0x5 ? DiagnosticSeverity.Warning
+        : State == 3 ? DiagnosticSeverity.Ok
+        : DiagnosticSeverity.Info;
+
     public string DeviceTypeName => DeviceType switch
     {
         0x00 => "Generic Device",

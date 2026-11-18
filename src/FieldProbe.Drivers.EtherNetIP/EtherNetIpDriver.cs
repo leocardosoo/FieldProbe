@@ -21,6 +21,9 @@ public sealed class EtherNetIpDriver : DriverBase, IDiagnosticsProvider
     private bool _connected;
     private EipIdentity? _identity;
 
+    /// <summary>Tags com erro permanente (não existe, índice, Path): próxima tentativa só depois do prazo.</summary>
+    private readonly Dictionary<string, (DateTime Until, string Message)> _failedTags = new(StringComparer.OrdinalIgnoreCase);
+
     public override string ProtocolName => Protocol;
 
     public override bool IsConnected => _connected;
@@ -62,6 +65,8 @@ public sealed class EtherNetIpDriver : DriverBase, IDiagnosticsProvider
     protected override async Task CloseAsync()
     {
         _connected = false;
+        lock (_failedTags) _failedTags.Clear();
+        lock (_lastProbe) _lastProbe.Clear();
         await _tagLock.WaitAsync().ConfigureAwait(false);
         try
         {
@@ -77,6 +82,15 @@ public sealed class EtherNetIpDriver : DriverBase, IDiagnosticsProvider
     private async Task<Tag> GetTagAsync(string name, FpDataType type, CancellationToken ct)
     {
         var key = $"{name}|{type}";
+        lock (_failedTags)
+        {
+            if (_failedTags.TryGetValue(name, out var failed))
+            {
+                if (DateTime.UtcNow < failed.Until) throw new TagFailedException(failed.Message);
+                _failedTags.Remove(name);
+            }
+        }
+
         await _tagLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
@@ -118,10 +132,6 @@ public sealed class EtherNetIpDriver : DriverBase, IDiagnosticsProvider
             _tags[key] = tag;
             return tag;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            throw new InvalidOperationException(Explain(ex, name), ex);
-        }
         finally
         {
             _tagLock.Release();
@@ -132,21 +142,31 @@ public sealed class EtherNetIpDriver : DriverBase, IDiagnosticsProvider
 
     protected override async Task<object?> ReadCoreAsync(TagAddress address, CancellationToken ct)
     {
-        var tag = await GetTagAsync(address.Address, address.DataType, ct).ConfigureAwait(false);
+        Tag tag;
         try
         {
+            tag = await GetTagAsync(address.Address, address.DataType, ct).ConfigureAwait(false);
             await tag.ReadAsync(ct).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            throw new InvalidOperationException(Explain(ex, address.Address), ex);
+            throw await FailAsync(ex, address.Address, ct).ConfigureAwait(false);
         }
         return Decode(tag, address.DataType);
     }
 
     protected override async Task WriteCoreAsync(TagAddress address, object value, CancellationToken ct)
     {
-        var tag = await GetTagAsync(address.Address, address.DataType, ct).ConfigureAwait(false);
+        Tag tag;
+        try
+        {
+            tag = await GetTagAsync(address.Address, address.DataType, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw await FailAsync(ex, address.Address, ct).ConfigureAwait(false);
+        }
+
         var size = tag.GetSize();
         var type = address.DataType == FpDataType.Auto ? InferType(size, value) : address.DataType;
         var inv = CultureInfo.InvariantCulture;
@@ -176,7 +196,7 @@ public sealed class EtherNetIpDriver : DriverBase, IDiagnosticsProvider
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            throw new InvalidOperationException(Explain(ex, address.Address), ex);
+            throw await FailAsync(ex, address.Address, ct).ConfigureAwait(false);
         }
     }
 
@@ -248,7 +268,13 @@ public sealed class EtherNetIpDriver : DriverBase, IDiagnosticsProvider
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return new[] { new TagNode($"Não foi possível listar os tags: {ex.Message}") };
+            var reason = ex.GetBaseException().Message;
+            return new[]
+            {
+                new TagNode(reason.Contains("Unsupported", StringComparison.OrdinalIgnoreCase)
+                    ? "Este controlador não permite listar os tags (serviço CIP não suportado). Digite o nome do tag no campo Endereço."
+                    : $"Não foi possível listar os tags: {reason}")
+            };
         }
 
         var buffer = ReadRaw(tag, tag.GetSize());
@@ -358,8 +384,8 @@ public sealed class EtherNetIpDriver : DriverBase, IDiagnosticsProvider
             items.Add(new("Identificação", $"Produto: {id.ProductName}", DiagnosticSeverity.Ok));
             items.Add(new("Identificação", $"Fabricante: {id.VendorName} · Tipo: {id.DeviceTypeName} · Código: {id.ProductCode}"));
             items.Add(new("Identificação", $"Firmware: {id.RevisionMajor}.{id.RevisionMinor:D3} · Serial: {id.SerialNumber:X8}"));
-            items.Add(new("Estado", $"Status CIP: 0x{id.Status:X4} · Estado: {id.State}",
-                (id.Status & 0x0F00) is 0x0100 or 0x0200 or 0x0300 ? DiagnosticSeverity.Warning : DiagnosticSeverity.Info));
+            items.Add(new("Estado", $"Equipamento {id.StateText} · {id.StatusText} (status 0x{id.Status:X4}, estado {id.State})",
+                id.StatusSeverity));
         }
         catch (Exception ex)
         {
@@ -367,9 +393,82 @@ public sealed class EtherNetIpDriver : DriverBase, IDiagnosticsProvider
         }
 
         items.Add(new("Configuração", $"Tipo de CLP: {CurrentPlcType} · Path: {s.GetOption("Path", "1,0")} · Gateway: {Gateway}"));
+
+        try
+        {
+            var session = await CipClient.RegisterSessionAsync(s.Host, s.Port > 0 ? s.Port : 44818, s.TimeoutMs,
+                (direction, data, description) => OnFrame(direction, data, description), ct).ConfigureAwait(false);
+            items.Add(new("Sessão CIP", $"RegisterSession aceito (sessão 0x{session:X8}): mensagens explícitas liberadas.", DiagnosticSeverity.Ok));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            items.Add(new("Sessão CIP", $"RegisterSession falhou: {ex.Message}", DiagnosticSeverity.Warning));
+        }
         items.Add(new("Segurança", "EtherNet/IP clássico não autentica clientes. Restrinja o acesso à porta 44818 (firewall/VLAN) ou use CIP Security.", DiagnosticSeverity.Warning));
         items.Add(new("Estatísticas", Statistics.Snapshot().ToString()));
         return items;
+    }
+
+    /// <summary>
+    /// Explica a falha com o código CIP exato: repete a leitura do tag por uma mensagem CIP própria
+    /// (Read Tag) e traduz o General/Extended Status devolvido pelo controlador.
+    /// Permanent = erro que não se resolve sozinho (tag inexistente, índice, Path...): espaça as novas tentativas.
+    /// </summary>
+    private async Task<(string Message, bool Permanent)> ExplainAsync(Exception ex, string tagName, CancellationToken ct)
+    {
+        var basic = Explain(ex, tagName);
+        var s = Settings;
+        if (s is null || CurrentPlcType is PlcType.Slc500 or PlcType.MicroLogix or PlcType.Plc5)
+            return (basic, false); // PLCs PCCC não usam Read Tag simbólico
+
+        lock (_lastProbe)
+        {
+            // erros passageiros (rede, timeout): no máximo uma consulta CIP extra a cada 15 s por tag
+            if (_lastProbe.TryGetValue(tagName, out var last) && DateTime.UtcNow - last < TimeSpan.FromSeconds(15))
+                return (basic, false);
+            _lastProbe[tagName] = DateTime.UtcNow;
+        }
+
+        OnTrace($"libplctag: {ex.GetBaseException().Message} ('{tagName}')");
+        try
+        {
+            var path = CurrentPlcType == PlcType.Micro800 ? string.Empty : s.GetOption("Path", "1,0");
+            var result = await CipClient.ReadTagAsync(s.Host, s.Port > 0 ? s.Port : 44818, path, tagName,
+                Math.Min(Math.Max(1000, s.TimeoutMs), 3000),
+                (direction, data, description) => OnFrame(direction, data, description), ct).ConfigureAwait(false);
+
+            if (result.Status.IsSuccess)
+                return ($"A leitura CIP direta de '{tagName}' funciona (tipo {CipErrors.TypeName(result.DataType ?? 0)}): confira o Tipo escolhido no item", false);
+
+            var message = CipErrors.Hint(result.Status, tagName);
+            OnTrace(message, FrameDirection.Rx);
+            return (message, CipErrors.IsPermanent(result.Status));
+        }
+        catch (Exception probeError) when (probeError is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            OnTrace($"Diagnóstico CIP indisponível: {probeError.Message}");
+            return (basic, false);
+        }
+    }
+
+    /// <summary>Lança a falha explicada e, se for permanente, guarda para não recriar o tag a cada ciclo.</summary>
+    private async Task<Exception> FailAsync(Exception ex, string tagName, CancellationToken ct)
+    {
+        if (ex is TagFailedException) return new InvalidOperationException(ex.Message);
+
+        var (message, permanent) = await ExplainAsync(ex, tagName, ct).ConfigureAwait(false);
+        if (permanent)
+            lock (_failedTags) _failedTags[tagName] = (DateTime.UtcNow + RetryPermanentAfter, message);
+        return new InvalidOperationException(message, ex);
+    }
+
+    private static readonly TimeSpan RetryPermanentAfter = TimeSpan.FromSeconds(30);
+
+    private readonly Dictionary<string, DateTime> _lastProbe = new(StringComparer.OrdinalIgnoreCase);
+
+    private sealed class TagFailedException : Exception
+    {
+        public TagFailedException(string message) : base(message) { }
     }
 
     private string Explain(Exception ex, string tagName)

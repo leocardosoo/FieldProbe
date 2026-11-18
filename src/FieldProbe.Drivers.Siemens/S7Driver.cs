@@ -205,8 +205,72 @@ public sealed class S7Driver : DriverBase, IDiagnosticsProvider
             items.Add(new("Acesso a dados", $"Leitura do DB{firstDb} falhou: {Explain(ex)}", DiagnosticSeverity.Warning));
         }
 
+        if (s is not null) await AddCpuDiagnosticsAsync(s, items, ct).ConfigureAwait(false);
+
         items.Add(new("Estatísticas", Statistics.Snapshot().ToString()));
         return items;
+    }
+
+    /// <summary>Identificação, modo RUN/STOP e buffer de diagnóstico, por uma conexão S7 separada (só leitura de SZL).</summary>
+    private async Task AddCpuDiagnosticsAsync(ConnectionSettings s, List<DiagnosticItem> items, CancellationToken ct)
+    {
+        S7SystemClient system;
+        try
+        {
+            system = await S7SystemClient.ConnectAsync(s.Host, s.Port > 0 ? s.Port : 102,
+                s.GetIntOption("Rack", 0), s.GetIntOption("Slot", 1), s.TimeoutMs, ct,
+                (direction, data, description) => OnFrame(direction, data, description)).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            items.Add(new("CPU", $"Não foi possível abrir a conexão de diagnóstico: {ex.Message}", DiagnosticSeverity.Warning));
+            return;
+        }
+
+        await using (system)
+        {
+            try
+            {
+                var identity = await system.ReadIdentityAsync(ct).ConfigureAwait(false);
+                if (identity is not null) items.Add(new("CPU", identity.ToString(), DiagnosticSeverity.Ok));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                items.Add(new("CPU", $"Identificação indisponível: {ex.Message}"));
+            }
+
+            try
+            {
+                var mode = await system.ReadCpuModeAsync(ct).ConfigureAwait(false);
+                var severity = mode switch
+                {
+                    S7CpuMode.Run => DiagnosticSeverity.Ok,
+                    S7CpuMode.Stop => DiagnosticSeverity.Critical,
+                    S7CpuMode.Unknown => DiagnosticSeverity.Info,
+                    _ => DiagnosticSeverity.Warning
+                };
+                var hint = mode == S7CpuMode.Stop ? " · o programa não está rodando: veja o buffer de diagnóstico abaixo" : string.Empty;
+                items.Add(new("Estado da CPU", $"Modo de operação: {S7SystemClient.DescribeMode(mode)}{hint}", severity));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                items.Add(new("Estado da CPU", $"Não foi possível ler o modo de operação: {ex.Message}"));
+            }
+
+            try
+            {
+                var events = await system.ReadDiagnosticBufferAsync(10, ct).ConfigureAwait(false);
+                if (events.Count == 0)
+                    items.Add(new("Buffer de diagnóstico", "Nenhum evento retornado pela CPU."));
+                foreach (var e in events)
+                    items.Add(new("Buffer de diagnóstico", $"{S7SystemClient.FormatTime(e.Timestamp)} · {e.Description}", e.Severity));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                items.Add(new("Buffer de diagnóstico",
+                    $"Não disponível por este caminho ({ex.Message}). Em S7-1200/1500 o buffer completo fica no TIA Portal ou no web server da CPU."));
+            }
+        }
     }
 
     private static string Explain(Exception ex)

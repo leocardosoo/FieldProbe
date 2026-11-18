@@ -251,6 +251,10 @@ public sealed class NetworkScanner
                 r.Protocols.Add("Siemens S7 (ISO-TSAP)");
                 var s7 = await Probes.S7CotpAsync(ip, timeoutMs, ct).ConfigureAwait(false);
                 r.Identity.Add(s7 ?? "porta 102 aberta (ISO-TSAP); a CPU não aceitou rack/slot testados");
+                if (s7?.Contains("CPU em STOP", StringComparison.Ordinal) == true)
+                    r.Findings.Add(new(DiagnosticSeverity.Warning, "Siemens S7",
+                        "A CPU está em STOP: o programa não está rodando.",
+                        "Verifique o buffer de diagnóstico (Diagnóstico da conexão S7 ou TIA Portal) antes de colocar em RUN."));
                 r.Findings.Add(new(DiagnosticSeverity.Warning, "Siemens S7",
                     "A CPU aceita conexões S7 na porta 102. Se o acesso PUT/GET estiver habilitado, dados podem ser lidos e escritos sem senha.",
                     "Desabilitar PUT/GET quando não for necessário, configurar o nível de proteção de acesso da CPU e segmentar a rede."));

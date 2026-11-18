@@ -46,7 +46,8 @@ Também inclui:
 | Modbus TCP | `python tools/modbus_sim.py` (sem dependências) | Modbus TCP · 127.0.0.1:502 |
 | MQTT (broker + devices) | `python tools/mqtt_sim.py` (sem dependências) | MQTT · 127.0.0.1:1883 |
 | OPC UA | `pip install asyncua` e depois `python tools/opcua_sim.py` | OPC UA · `opc.tcp://127.0.0.1:4840/fieldprobe/` |
-| PLC | `python tools/s7_sim.py` (sem dependências) | PLC · 127.0.0.1:102 |
+| Siemens S7 (CPU 1214C) | `python tools/s7_sim.py` (sem dependências) | Siemens S7 · 127.0.0.1:102 · rack 0 / slot 1 |
+| EtherNet/IP (CompactLogix) | `python tools/eip_sim.py` (sem dependências) | EtherNet/IP · 127.0.0.1 · ControlLogix · Path 1,0 |
 | Projeto pronto | abra `samples/demo-simuladores.fpx` e clique em **Conectar todas** | Modbus + MQTT + OPC UA |
 | CLI rápida | `python tools/fieldprobe_cli.py modbus 127.0.0.1 r HR:0` | (terminal) |
 
@@ -54,6 +55,8 @@ Para Siemens S7 sem CLP, use o PLCSIM Advanced ou um S7-1200 de bancada. Para Et
 
 O `modbus_sim.py` simula falhas: `--delay 300` (latência), `--drop 20` (20% de timeouts) e `--unit 5` (testa Unit ID errado).
 O `mqtt_sim.py` aceita `--user/--password` para testar a autenticação.
+O `s7_sim.py` aceita os comandos `stop`, `run` e `erro` no terminal (modo da CPU e buffer de diagnóstico).
+O `eip_sim.py` devolve erros CIP reais para testar a tradução: tag `Inexistente`, `Valores[50]` ou Path errado.
 
 ## Formatos de endereço
 
@@ -81,7 +84,7 @@ FieldProbe.sln
 ├── src/FieldProbe.Drivers.Siemens      S7netplus (MIT)
 ├── src/FieldProbe.Drivers.EtherNetIP   libplctag (MPL-2.0) + ListIdentity próprio + listagem de tags Logix
 ├── src/FieldProbe.App                  WPF (MVVM sem frameworks), tema próprio, tendência, gravação CSV
-├── tools/                              simuladores Modbus/MQTT/OPC UA e CLI em Python
+├── tools/                              simuladores Modbus/MQTT/OPC UA/S7/EtherNet/IP e CLI em Python
 ├── build/                              publish.ps1 (self-contained) e installer.iss (Inno Setup)
 └── docs/COMERCIALIZACAO.md             licenças, marcas e checklist para vender
 ```

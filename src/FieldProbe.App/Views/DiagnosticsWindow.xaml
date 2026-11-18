@@ -42,7 +42,7 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Categoria" Binding="{Binding Category, Mode=OneWay}" Width="130" FontWeight="SemiBold" />
+                    <DataGridTextColumn Header="Categoria" Binding="{Binding Category, Mode=OneWay}" Width="165" FontWeight="SemiBold" />
                     <DataGridTemplateColumn Header="Resultado" Width="*">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>

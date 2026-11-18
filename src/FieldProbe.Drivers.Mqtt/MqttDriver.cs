@@ -96,6 +96,7 @@ public sealed class MqttDriver : DriverBase, IDiagnosticsProvider
     private void OnConnectionLost(string reason)
     {
         OnStatus($"Conexão com o broker perdida: {reason}");
+        NotifyConnectionLost(reason);
         if (!SessionRequested || !AutoReconnect) return;
 
         var token = _reconnectCts?.Token ?? CancellationToken.None;
@@ -118,6 +119,25 @@ public sealed class MqttDriver : DriverBase, IDiagnosticsProvider
                 }
             }
         }, token);
+    }
+
+    /// <summary>Sem broker não chegam mensagens: todos os itens monitorados passam a Bad até a próxima mensagem.</summary>
+    private void NotifyConnectionLost(string reason)
+    {
+        List<Subscriber> subscribers;
+        lock (_subscribersLock) subscribers = _subscribers.ToList();
+        foreach (var subscriber in subscribers)
+        {
+            try
+            {
+                subscriber.Callback(new TagValue(subscriber.Address, null, Quality.Bad, DateTime.Now, TimeSpan.Zero,
+                    $"Sem conexão com o broker ({reason}): valor não está sendo atualizado"));
+            }
+            catch
+            {
+                // um item com problema não impede os outros
+            }
+        }
     }
 
     // ----- Mensagens -----

@@ -388,10 +388,11 @@
                         <DockPanel>
                             <DockPanel DockPanel.Dock="Top" Margin="10,8,10,6">
                                 <TextBlock Text="Data Access View" Style="{StaticResource SectionTitle}" Margin="0" />
-                                <TextBlock Text="duplo clique (ou F2) para editar nome, tipo, escala e unidade" Style="{StaticResource Muted}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                <TextBlock Text="duplo clique (ou F2) para editar · botão direito no cabeçalho para escolher as colunas" Style="{StaticResource Muted}" Margin="12,0,0,0" VerticalAlignment="Center" />
                             </DockPanel>
                             <DataGrid x:Name="WatchGrid" ItemsSource="{Binding WatchItems}" SelectedItem="{Binding SelectedWatchItem}"
-                                      EnableRowVirtualization="True" MouseDoubleClick="WatchGrid_MouseDoubleClick">
+                                      EnableRowVirtualization="True" MouseDoubleClick="WatchGrid_MouseDoubleClick"
+                                      RowHeight="38" PreviewMouseRightButtonUp="WatchGrid_PreviewMouseRightButtonUp">
                                 <DataGrid.InputBindings>
                                     <KeyBinding Key="Delete" Command="{Binding RemoveWatchCommand}" />
                                 </DataGrid.InputBindings>
@@ -423,60 +424,101 @@
                                 </DataGrid.RowStyle>
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Conexão" MinWidth="90" Binding="{Binding ConnectionName, Mode=OneWay}" />
-                                    <DataGridTextColumn Header="Nome" MinWidth="150" Binding="{Binding Label, Mode=OneWay}" FontWeight="SemiBold">
-                                        <DataGridTextColumn.ElementStyle>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-                                                <Setter Property="ToolTip" Value="{Binding LabelToolTip}" />
-                                            </Style>
-                                        </DataGridTextColumn.ElementStyle>
-                                    </DataGridTextColumn>
-                                    <DataGridTextColumn Header="Endereço" MinWidth="170" Binding="{Binding AddressText, Mode=OneWay}" FontFamily="Consolas">
-                                        <DataGridTextColumn.ElementStyle>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-                                                <Setter Property="ToolTip" Value="{Binding LabelToolTip}" />
-                                            </Style>
-                                        </DataGridTextColumn.ElementStyle>
-                                    </DataGridTextColumn>
-                                    <DataGridTextColumn Header="Tipo" MinWidth="70" Binding="{Binding DataType, Mode=OneWay}" />
-                                    <DataGridTextColumn Header="Ordem" MinWidth="60" Binding="{Binding ByteOrderText, Mode=OneWay}" />
-                                    <DataGridTextColumn Header="Valor" MinWidth="130" Binding="{Binding ValueText, Mode=OneWay}" Width="150" FontWeight="SemiBold" FontFamily="Consolas" />
-                                    <DataGridTextColumn Header="Escala" MinWidth="70" Binding="{Binding ScalingText, Mode=OneWay}" />
-                                    <DataGridTemplateColumn Header="Alarme" MinWidth="110" SortMemberPath="AlarmState">
+
+                                    <!-- Nome em destaque + endereço embaixo, em cinza -->
+                                    <DataGridTemplateColumn Header="Nome" MinWidth="170" Width="220" SortMemberPath="Label">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" ToolTip="{Binding AlarmLimitsText}">
-                                                    <TextBlock Text="{Binding AlarmText}" FontWeight="SemiBold">
-                                                        <TextBlock.Style>
-                                                            <Style TargetType="TextBlock">
-                                                                <Setter Property="Foreground" Value="#1A7F37" />
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding IsInAlarm}" Value="True">
-                                                                        <Setter Property="Foreground" Value="#CF222E" />
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </TextBlock.Style>
-                                                    </TextBlock>
+                                                <StackPanel VerticalAlignment="Center" ToolTip="{Binding LabelToolTip}">
+                                                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding AddressText}" FontFamily="Consolas" FontSize="10.5" Foreground="#8C959F"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Visibility="{Binding ShowAddressUnderName, Converter={StaticResource BoolToVis}}" />
                                                 </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="Tipo nativo" MinWidth="95" Binding="{Binding TypeName, Mode=OneWay}" />
-                                    <DataGridTemplateColumn Header="Qualidade" MinWidth="85">
+
+                                    <!-- Valor alinhado à direita (números) com a unidade em cinza -->
+                                    <DataGridTemplateColumn Header="Valor" MinWidth="120" Width="150" SortMemberPath="ValueText">
+                                        <DataGridTemplateColumn.HeaderStyle>
+                                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                                <Setter Property="HorizontalContentAlignment" Value="Right" />
+                                            </Style>
+                                        </DataGridTemplateColumn.HeaderStyle>
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <TextBlock Text="{Binding Quality}" FontWeight="SemiBold">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{Binding ValueText}">
+                                                    <StackPanel.Style>
+                                                        <Style TargetType="StackPanel">
+                                                            <Setter Property="HorizontalAlignment" Value="Left" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsNumericValue}" Value="True">
+                                                                    <Setter Property="HorizontalAlignment" Value="Right" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </StackPanel.Style>
+                                                    <TextBlock Text="{Binding ValueNumberText}" FontFamily="Consolas" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding Unit}" Foreground="#8C959F" Margin="4,0,0,0" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <!-- Qualidade como etiqueta colorida -->
+                                    <DataGridTemplateColumn Header="Qualidade" MinWidth="95" SortMemberPath="Quality">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border CornerRadius="9" Padding="7,1,9,1" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="#FFF8C5" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Quality}" Value="Good"><Setter Property="Background" Value="#DAFBE1" /></DataTrigger>
+                                                                <DataTrigger Binding="{Binding Quality}" Value="Bad"><Setter Property="Background" Value="#FFEBE9" /></DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Ellipse Width="6" Height="6" Margin="0,0,5,0" VerticalAlignment="Center">
+                                                            <Ellipse.Style>
+                                                                <Style TargetType="Ellipse">
+                                                                    <Setter Property="Fill" Value="{StaticResource WarnBrush}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Quality}" Value="Good"><Setter Property="Fill" Value="{StaticResource GoodBrush}" /></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Quality}" Value="Bad"><Setter Property="Fill" Value="{StaticResource BadBrush}" /></DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Ellipse.Style>
+                                                        </Ellipse>
+                                                        <TextBlock Text="{Binding Quality}" FontSize="11.5" FontWeight="SemiBold">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Foreground" Value="{StaticResource WarnBrush}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Quality}" Value="Good"><Setter Property="Foreground" Value="{StaticResource GoodBrush}" /></DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Quality}" Value="Bad"><Setter Property="Foreground" Value="{StaticResource BadBrush}" /></DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <DataGridTemplateColumn Header="Alarme" MinWidth="110" SortMemberPath="AlarmState">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding AlarmText}" FontWeight="SemiBold" VerticalAlignment="Center" ToolTip="{Binding AlarmLimitsText}">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
-                                                            <Setter Property="Foreground" Value="{StaticResource WarnBrush}" />
+                                                            <Setter Property="Foreground" Value="#1A7F37" />
                                                             <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding Quality}" Value="Good">
-                                                                    <Setter Property="Foreground" Value="{StaticResource GoodBrush}" />
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding Quality}" Value="Bad">
-                                                                    <Setter Property="Foreground" Value="{StaticResource BadBrush}" />
+                                                                <DataTrigger Binding="{Binding IsInAlarm}" Value="True">
+                                                                    <Setter Property="Foreground" Value="#CF222E" />
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -485,15 +527,32 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="Timestamp" MinWidth="100" Binding="{Binding Timestamp, Mode=OneWay, StringFormat=HH:mm:ss.fff}" />
+
+                                    <DataGridTextColumn Header="Timestamp" MinWidth="100" Binding="{Binding Timestamp, Mode=OneWay, StringFormat=HH:mm:ss.fff}" FontFamily="Consolas" Foreground="#57606A" />
+
+                                    <!-- Colunas técnicas: escondidas por padrão (botão direito no cabeçalho para mostrar) -->
+                                    <DataGridTextColumn Header="Endereço" MinWidth="170" Binding="{Binding AddressText, Mode=OneWay}" FontFamily="Consolas">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                                <Setter Property="ToolTip" Value="{Binding AddressText}" />
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Tipo" MinWidth="70" Binding="{Binding DataType, Mode=OneWay}" />
+                                    <DataGridTextColumn Header="Ordem" MinWidth="60" Binding="{Binding ByteOrderText, Mode=OneWay}" />
+                                    <DataGridTextColumn Header="Escala" MinWidth="70" Binding="{Binding ScalingText, Mode=OneWay}" />
+                                    <DataGridTextColumn Header="Tipo nativo" MinWidth="95" Binding="{Binding TypeName, Mode=OneWay}" />
                                     <DataGridTextColumn Header="Latência (ms)" MinWidth="100" Binding="{Binding LatencyMs, Mode=OneWay, StringFormat=F1}" />
                                     <DataGridTextColumn Header="Ciclo (ms)" MinWidth="85" Binding="{Binding IntervalMs, Mode=OneWay}" />
                                     <DataGridTextColumn Header="Leituras" MinWidth="75" Binding="{Binding ReadCount, Mode=OneWay}" />
                                     <DataGridTextColumn Header="Erros" MinWidth="55" Binding="{Binding ErrorCount, Mode=OneWay}" />
+
                                     <DataGridTextColumn Header="Último erro / info" Binding="{Binding Error, Mode=OneWay}" Width="*" MinWidth="220">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                                <Setter Property="VerticalAlignment" Value="Center" />
                                                 <Setter Property="ToolTip" Value="{Binding Error}" />
                                                 <Setter Property="ToolTipService.ShowDuration" Value="30000" />
                                             </Style>

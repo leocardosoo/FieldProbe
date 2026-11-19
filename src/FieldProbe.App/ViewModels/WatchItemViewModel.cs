@@ -80,6 +80,7 @@ public sealed class WatchItemViewModel : ObservableObject
             {
                 OnPropertyChanged(nameof(Label));
                 OnPropertyChanged(nameof(LabelToolTip));
+                OnPropertyChanged(nameof(ShowAddressUnderName));
             }
         }
     }
@@ -148,6 +149,7 @@ public sealed class WatchItemViewModel : ObservableObject
         OnPropertyChanged(nameof(HasScaling));
         OnPropertyChanged(nameof(ScalingText));
         OnPropertyChanged(nameof(ValueText));
+        OnPropertyChanged(nameof(ValueNumberText));
         ReevaluateAlarm();
     }
 
@@ -307,12 +309,23 @@ public sealed class WatchItemViewModel : ObservableObject
         {
             if (!Set(ref _value, value)) return;
             OnPropertyChanged(nameof(ValueText));
+            OnPropertyChanged(nameof(ValueNumberText));
+            OnPropertyChanged(nameof(IsNumericValue));
             OnPropertyChanged(nameof(RawValueText));
         }
     }
 
     /// <summary>Valor de engenharia (com escala e unidade).</summary>
     public string ValueText => DisplayValue(_value);
+
+    /// <summary>Só o número/texto (com escala), sem a unidade: a tabela mostra a unidade separada, em cinza.</summary>
+    public string ValueNumberText => _value is null ? "-" : TryScale(_value, out var scaled) ? Format(scaled) : Format(_value);
+
+    /// <summary>Valores numéricos ficam alinhados à direita na tabela.</summary>
+    public bool IsNumericValue => _value is not null and not bool and not string && TryNumeric(_value, out _);
+
+    /// <summary>Mostrar o endereço embaixo do nome (só quando o nome é diferente do endereço).</summary>
+    public bool ShowAddressUnderName => !string.Equals(Label, AddressText, StringComparison.Ordinal);
 
     /// <summary>Valor bruto, como veio do device.</summary>
     public string RawValueText => Format(_value);
@@ -409,6 +422,7 @@ public sealed class WatchItemViewModel : ObservableObject
         OnPropertyChanged(nameof(IntervalMs));
         OnPropertyChanged(nameof(Label));
         OnPropertyChanged(nameof(LabelToolTip));
+        OnPropertyChanged(nameof(ShowAddressUnderName));
 
         if (wasActive) Start();
     }

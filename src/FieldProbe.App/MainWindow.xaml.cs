@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -24,6 +26,102 @@ public partial class MainWindow : Window
 
         Closing += OnClosingWindow;
         Closed += (_, _) => _viewModel.Dispose();
+
+        ApplyColumnSettings(LoadHiddenColumns());
+    }
+
+    // ===================== Colunas da Data Access View =====================
+
+    /// <summary>Colunas técnicas, escondidas na primeira vez (o usuário liga pelo botão direito no cabeçalho).</summary>
+    private static readonly string[] DefaultHiddenColumns =
+        { "Endereço", "Tipo", "Ordem", "Escala", "Tipo nativo", "Latência (ms)", "Ciclo (ms)", "Leituras", "Erros" };
+
+    /// <summary>Colunas que não podem ser escondidas.</summary>
+    private static readonly string[] FixedColumns = { "Nome", "Valor" };
+
+    private static string UiSettingsPath =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FieldProbe", "ui.json");
+
+    private sealed record UiSettings(List<string> HiddenColumns);
+
+    private static IReadOnlyCollection<string> LoadHiddenColumns()
+    {
+        try
+        {
+            if (File.Exists(UiSettingsPath))
+            {
+                var settings = JsonSerializer.Deserialize<UiSettings>(File.ReadAllText(UiSettingsPath));
+                if (settings?.HiddenColumns is not null) return settings.HiddenColumns;
+            }
+        }
+        catch
+        {
+            // arquivo corrompido: volta ao padrão
+        }
+        return DefaultHiddenColumns;
+    }
+
+    private void SaveHiddenColumns()
+    {
+        try
+        {
+            var hidden = WatchGrid.Columns
+                .Where(c => c.Visibility != Visibility.Visible)
+                .Select(c => c.Header?.ToString() ?? string.Empty)
+                .ToList();
+            Directory.CreateDirectory(Path.GetDirectoryName(UiSettingsPath)!);
+            File.WriteAllText(UiSettingsPath, JsonSerializer.Serialize(new UiSettings(hidden)));
+        }
+        catch
+        {
+            // preferência visual: falha ao salvar não atrapalha o uso
+        }
+    }
+
+    private void ApplyColumnSettings(IReadOnlyCollection<string> hidden)
+    {
+        foreach (var column in WatchGrid.Columns)
+        {
+            var header = column.Header?.ToString() ?? string.Empty;
+            column.Visibility = hidden.Contains(header) && !FixedColumns.Contains(header) ? Visibility.Collapsed : Visibility.Visible;
+        }
+    }
+
+    /// <summary>Botão direito no cabeçalho da tabela: menu para escolher as colunas visíveis.</summary>
+    private void WatchGrid_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var source = e.OriginalSource as DependencyObject;
+        while (source is not null && source is not System.Windows.Controls.Primitives.DataGridColumnHeader && source is not DataGridRow)
+            source = source is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(source) : LogicalTreeHelper.GetParent(source);
+        if (source is not System.Windows.Controls.Primitives.DataGridColumnHeader) return;
+
+        var menu = new ContextMenu();
+        menu.Items.Add(new MenuItem { Header = "Colunas visíveis", IsEnabled = false });
+        foreach (var column in WatchGrid.Columns)
+        {
+            var header = column.Header?.ToString() ?? string.Empty;
+            if (FixedColumns.Contains(header)) continue;
+
+            var item = new MenuItem { Header = header, IsCheckable = true, IsChecked = column.Visibility == Visibility.Visible, StaysOpenOnClick = true };
+            item.Click += (_, _) =>
+            {
+                column.Visibility = item.IsChecked ? Visibility.Visible : Visibility.Collapsed;
+                SaveHiddenColumns();
+            };
+            menu.Items.Add(item);
+        }
+        menu.Items.Add(new Separator());
+        var reset = new MenuItem { Header = "Restaurar padrão" };
+        reset.Click += (_, _) =>
+        {
+            ApplyColumnSettings(DefaultHiddenColumns);
+            SaveHiddenColumns();
+        };
+        menu.Items.Add(reset);
+
+        menu.PlacementTarget = WatchGrid;
+        menu.IsOpen = true;
+        e.Handled = true;
     }
 
     public async void OpenProjectOnStartup(string path)
@@ -81,21 +179,6 @@ public partial class MainWindow : Window
         {
             _viewModel.EditWatchCommand.Execute(null);
             e.Handled = true;
-        }
-    }
-
-    private void SaveTrendPng_Click(object sender, RoutedEventArgs e)
-    {
-        var path = FieldProbe.App.Services.DialogService.SaveFile("Imagem PNG (*.png)|*.png", $"tendencia_{DateTime.Now:yyyyMMdd_HHmmss}.png");
-        if (path is null) return;
-        try
-        {
-            TrendChartControl.SaveAsPng(path);
-            _viewModel.AddLog("FieldProbe", "INFO", $"Gráfico salvo em {path}");
-        }
-        catch (Exception ex)
-        {
-            _viewModel.AddLog("FieldProbe", "ERRO", $"Não foi possível salvar o gráfico: {ex.Message}");
         }
     }
 

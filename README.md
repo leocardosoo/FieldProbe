@@ -104,15 +104,3 @@ FieldProbe.sln
 .\build\publish.ps1 -Version 1.0.0          # gera artifacts\publish (não exige .NET na máquina do cliente)
 iscc build\installer.iss /DAppVersion=1.0.0 # gera artifacts\installer\FieldProbe-Setup-1.0.0.exe
 ```
-
-## Roadmap sugerido
-
-- [ ] Licenciamento (chave de ativação / trial) e EULA
-- [ ] Assinatura de código (certificado code signing), para evitar o alerta do SmartScreen
-- [ ] Sequências de teste (escrever → aguardar → verificar) com relatório OK/NOK em PDF
-- [ ] Modo simulador/escravo (Modbus server, broker MQTT embutido)
-- [x] Scanner de rede e relatório de auditoria
-- [ ] OPC UA: escrita de arrays, métodos, eventos/alarmes e certificados de usuário
-- [ ] MQTT 5 e Sparkplug B
-- [ ] BACnet/IP, DNP3, IEC 60870-5-104, Omron FINS, Mitsubishi MC Protocol
-- [ ] Tema escuro e idioma inglês

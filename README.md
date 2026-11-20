@@ -54,8 +54,10 @@ Também inclui:
 Para Siemens S7 sem CLP, use o PLCSIM Advanced ou um S7-1200 de bancada. Para EtherNet/IP, use um CompactLogix ou o Studio 5000 Logix Emulate.
 
 O `modbus_sim.py` simula falhas: `--delay 300` (latência), `--drop 20` (20% de timeouts) e `--unit 5` (testa Unit ID errado).
+Com `--mapa-real`, o `modbus_sim.py` só tem algumas faixas (HR:0-19, HR:100-149, IR:0-9, CO:0-15, DI:0-7), como um equipamento real: bom para testar o **Procurar endereços**.
 O `mqtt_sim.py` aceita `--user/--password` para testar a autenticação.
 O `s7_sim.py` aceita os comandos `stop`, `run` e `erro` no terminal (modo da CPU e buffer de diagnóstico).
+Para testar o **Procurar DBs**: `python tools/s7_sim.py --dbs 1,10,100,999 --otimizado 10` (DB10 existe mas é otimizado).
 O `eip_sim.py` devolve erros CIP reais para testar a tradução: tag `Inexistente`, `Valores[50]` ou Path errado.
 
 ## Formatos de endereço
@@ -102,3 +104,15 @@ FieldProbe.sln
 .\build\publish.ps1 -Version 1.0.0          # gera artifacts\publish (não exige .NET na máquina do cliente)
 iscc build\installer.iss /DAppVersion=1.0.0 # gera artifacts\installer\FieldProbe-Setup-1.0.0.exe
 ```
+
+## Roadmap sugerido
+
+- [ ] Licenciamento (chave de ativação / trial) e EULA
+- [ ] Assinatura de código (certificado code signing), para evitar o alerta do SmartScreen
+- [ ] Sequências de teste (escrever → aguardar → verificar) com relatório OK/NOK em PDF
+- [ ] Modo simulador/escravo (Modbus server, broker MQTT embutido)
+- [x] Scanner de rede e relatório de auditoria
+- [ ] OPC UA: escrita de arrays, métodos, eventos/alarmes e certificados de usuário
+- [ ] MQTT 5 e Sparkplug B
+- [ ] BACnet/IP, DNP3, IEC 60870-5-104, Omron FINS, Mitsubishi MC Protocol
+- [ ] Tema escuro e idioma inglês

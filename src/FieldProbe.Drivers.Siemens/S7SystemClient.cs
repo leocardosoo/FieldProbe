@@ -197,6 +197,72 @@ public sealed class S7SystemClient : IAsyncDisposable
         _ => "desconhecido"
     };
 
+    // ===================== Teste de existência de DBs =====================
+
+    /// <summary>Máximo de itens por pedido Read Var: cabe mesmo numa PDU de 240 bytes.</summary>
+    public const int MaxProbeItems = 18;
+
+    /// <summary>Códigos de retorno por item do S7 (Read Var).</summary>
+    public const byte ReturnOk = 0xFF;
+    public const byte ReturnAccessDenied = 0x03;
+    public const byte ReturnOutOfRange = 0x05;
+    public const byte ReturnNotExist = 0x0A;
+
+    /// <summary>
+    /// Lê 1 byte de cada posição (DB, offset) num único pedido e devolve o código de retorno de cada item:
+    /// 0xFF = existe e leu · 0x0A = DB não existe · 0x05 = offset além do fim · 0x03 = acesso negado.
+    /// </summary>
+    public async Task<byte[]> ProbeDbBytesAsync(IReadOnlyList<(int Db, int Offset)> items, CancellationToken ct)
+    {
+        if (items.Count is 0 or > MaxProbeItems) throw new ArgumentOutOfRangeException(nameof(items));
+
+        var parameters = new List<byte> { 0x04, (byte)items.Count };
+        foreach (var (db, offset) in items)
+        {
+            var bitAddress = offset * 8;
+            parameters.AddRange(new byte[]
+            {
+                0x12, 0x0A, 0x10, 0x02,                     // item de variável · transporte BYTE
+                0x00, 0x01,                                 // 1 byte
+                (byte)(db >> 8), (byte)db,                  // número do DB
+                0x84,                                       // área DB
+                (byte)(bitAddress >> 16), (byte)(bitAddress >> 8), (byte)bitAddress
+            });
+        }
+
+        var reference = _pduRef++;
+        var s7 = new List<byte> { 0x32, 0x01, 0x00, 0x00, (byte)(reference >> 8), (byte)reference,
+            (byte)(parameters.Count >> 8), (byte)parameters.Count, 0x00, 0x00 };
+        s7.AddRange(parameters);
+
+        var length = 4 + 3 + s7.Count;
+        var request = new List<byte> { 0x03, 0x00, (byte)(length >> 8), (byte)length, 0x02, 0xF0, 0x80 };
+        request.AddRange(s7);
+
+        var body = await ExchangeAsync(request.ToArray(), $"Read Var · teste de {items.Count} DB(s)", ct).ConfigureAwait(false);
+
+        const int h = 3; // depois do COTP DT
+        if (body.Length < h + 12 || body[h] != 0x32 || body[h + 1] != 0x03)
+            throw new InvalidDataException("Resposta S7 inesperada ao Read Var.");
+        if (body[h + 10] != 0x00)
+            throw new IOException($"O CLP recusou a leitura (erro S7 classe 0x{body[h + 10]:X2}, código 0x{body[h + 11]:X2}): o acesso PUT/GET pode estar desabilitado.");
+
+        var paramLength = (body[h + 6] << 8) | body[h + 7];
+        var pos = h + 12 + paramLength;
+        var codes = new byte[items.Count];
+        for (var i = 0; i < items.Count; i++)
+        {
+            if (pos + 4 > body.Length) throw new InvalidDataException("Resposta Read Var incompleta.");
+            codes[i] = body[pos];
+            var transport = body[pos + 1];
+            var size = (body[pos + 2] << 8) | body[pos + 3];
+            var dataBytes = codes[i] != ReturnOk ? 0 : transport is 0x03 or 0x04 or 0x05 ? (size + 7) / 8 : size;
+            pos += 4 + dataBytes;
+            if (dataBytes % 2 == 1 && i < items.Count - 1) pos++; // alinhamento
+        }
+        return codes;
+    }
+
     // ===================== Leitura de SZL =====================
 
     /// <summary>Lê uma SZL e devolve os registros.</summary>

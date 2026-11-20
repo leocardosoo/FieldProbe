@@ -169,6 +169,15 @@ public sealed class ConnectionEditorViewModel : ObservableObject
             return null;
         }
 
+        var options = Options.ToDictionary(o => o.Key, o => o.Value.Trim());
+
+        // Mantém dados internos da conexão (ex.: resultado de "Procurar DBs/registradores") se o protocolo e o endereço não mudaram.
+        if (_original is not null && _original.Protocol == SelectedDriver.Protocol && _original.Host == Host.Trim())
+        {
+            foreach (var (key, value) in _original.Options)
+                options.TryAdd(key, value);
+        }
+
         return new ConnectionSettings
         {
             Name = name,
@@ -176,7 +185,7 @@ public sealed class ConnectionEditorViewModel : ObservableObject
             Host = Host.Trim(),
             Port = UsesPort ? Port : 0,
             TimeoutMs = TimeoutMs,
-            Options = Options.ToDictionary(o => o.Key, o => o.Value.Trim())
+            Options = options
         };
     }
 }

@@ -42,6 +42,7 @@
                 <MenuItem Header="_Desconectar" Command="{Binding DisconnectCommand}" InputGestureText="F10" />
                 <MenuItem Header="_Atualizar árvore" Command="{Binding RefreshCommand}" InputGestureText="F5" />
                 <MenuItem Header="Dia_gnóstico do device..." Command="{Binding DiagnosticsCommand}" />
+                <MenuItem Header="Procurar _endereços (DBs / registradores)..." Command="{Binding ScanAddressesCommand}" />
                 <Separator />
                 <MenuItem Header="_Remover conexão" Command="{Binding RemoveConnectionCommand}" />
             </MenuItem>
@@ -182,6 +183,8 @@
                                         <MenuItem Header="Desconectar" Command="{Binding DisconnectCommand}" />
                                         <MenuItem Header="Atualizar árvore" Command="{Binding RefreshCommand}" />
                                         <MenuItem Header="Diagnóstico..." Command="{Binding DiagnosticsCommand}" />
+                                        <MenuItem Header="Procurar endereços..." Command="{Binding ScanAddressesCommand}"
+                                                  ToolTip="Descobre quais DBs (Siemens) ou registradores (Modbus) existem no equipamento" />
                                         <Separator />
                                         <MenuItem Header="Editar conexão..." Command="{Binding EditConnectionCommand}" />
                                         <MenuItem Header="Remover conexão" Command="{Binding RemoveConnectionCommand}" />

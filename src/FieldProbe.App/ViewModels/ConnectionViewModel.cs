@@ -40,6 +40,8 @@ public sealed class ConnectionViewModel : ObservableObject
 
     public bool SupportsDiagnostics => Driver is IDiagnosticsProvider;
 
+    public bool SupportsAddressScan => Driver is IAddressScanner;
+
     public ObservableCollection<TagNodeViewModel> Nodes { get; } = new();
 
     /// <summary>Sessão aberta pelo usuário (pode estar momentaneamente caída e reconectando).</summary>

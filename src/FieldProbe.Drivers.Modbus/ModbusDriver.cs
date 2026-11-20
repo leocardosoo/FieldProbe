@@ -12,7 +12,7 @@ public enum ModbusMode
 }
 
 /// <summary>Driver Modbus (TCP, RTU serial e RTU sobre TCP), com identificação do device (FC 43).</summary>
-public sealed class ModbusDriver : DriverBase, IDiagnosticsProvider, IRegisterInspector
+public sealed class ModbusDriver : DriverBase, IDiagnosticsProvider, IRegisterInspector, IAddressScanner
 {
     private readonly ModbusMode _mode;
     private IModbusTransport? _transport;
@@ -74,11 +74,26 @@ public sealed class ModbusDriver : DriverBase, IDiagnosticsProvider, IRegisterIn
         if (parent is not null)
             return Task.FromResult<IReadOnlyList<TagNode>>(parent.Children);
 
-        // Modbus não tem browse: árvore sugerida com os primeiros endereços de cada área.
+        // Modbus não tem browse: árvore sugerida com os primeiros endereços de cada área,
+        // ou só as faixas encontradas por "Procurar registradores".
         var count = Math.Clamp(Settings?.GetIntOption("BrowseCount", 10) ?? 10, 1, 500);
+        var found = ParseScanRanges(Settings?.GetOption("ScanRanges", string.Empty) ?? string.Empty);
 
         TagNode Folder(string name, ModbusArea area, DataType type)
         {
+            if (found is not null)
+            {
+                var ranges = found.Where(r => r.Area == area).ToList();
+                var total = ranges.Sum(r => r.Count);
+                var foundFolder = new TagNode(total == 0 ? $"{name} · nenhum encontrado" : $"{name} · {total} encontrados");
+                foreach (var offset in ranges.SelectMany(r => Enumerable.Range(r.Start, r.Count)).Take(300))
+                {
+                    var address = new ModbusAddress(area, (ushort)offset).ToString();
+                    foundFolder.Children.Add(new TagNode(address, new TagAddress(address, type)));
+                }
+                return foundFolder;
+            }
+
             var folder = new TagNode(name);
             for (var i = 0; i < count; i++)
             {
@@ -96,6 +111,181 @@ public sealed class ModbusDriver : DriverBase, IDiagnosticsProvider, IRegisterIn
             Folder("Holding Registers (4x) · leitura/escrita", ModbusArea.HoldingRegister, DataType.UInt16)
         };
         return Task.FromResult(roots);
+    }
+
+    // ===================== Procurar registradores =====================
+
+    private sealed record FoundRange(ModbusArea Area, int Start, int Count);
+
+    private static List<FoundRange>? ParseScanRanges(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var list = new List<FoundRange>();
+        foreach (var range in AddressRangeParser.Parse(text, 0, 65535, int.MaxValue))
+        {
+            var area = range.Prefix switch
+            {
+                "CO" => ModbusArea.Coil,
+                "DI" => ModbusArea.DiscreteInput,
+                "IR" => ModbusArea.InputRegister,
+                _ => ModbusArea.HoldingRegister
+            };
+            list.Add(new FoundRange(area, range.Start, range.Count));
+        }
+        return list;
+    }
+
+    public string AddressScanTitle => "Procurar registradores";
+
+    public string AddressScanHelp =>
+        "Procura quais endereços o equipamento aceita, por área. Faixa em offset (começando em 0), ex.: 0-999. " +
+        "Para uma área só, use o prefixo: HR:0-499, IR:0-99, CO:0-63, DI:0-63. " +
+        "Endereço que não existe custa 1 leitura (o equipamento responde 'Illegal Data Address'); faixas que existem são lidas em bloco. " +
+        "Em rede lenta, faixas grandes levam alguns minutos: dá para parar a qualquer momento. " +
+        "Só lê, não escreve nada. O tipo de cada registrador continua vindo do manual (ou do Detectar tipo).";
+
+    public string DefaultScanRange => "0-999";
+
+    public async Task ScanAddressesAsync(string range, IProgress<double>? progress, Action<AddressBlock> onFound, CancellationToken ct)
+    {
+        await EnsureConnectedAsync(ct).ConfigureAwait(false);
+        var client = _client ?? throw new InvalidOperationException("Não conectado.");
+        var ranges = AddressRangeParser.Parse(range, 0, 65535, 4 * 65536);
+
+        // Sem prefixo: procura nas 4 áreas
+        var jobs = new List<(ModbusArea Area, int Start, int End)>();
+        foreach (var r in ranges)
+        {
+            var areas = r.Prefix switch
+            {
+                "HR" or "4X" => new[] { ModbusArea.HoldingRegister },
+                "IR" or "3X" => new[] { ModbusArea.InputRegister },
+                "CO" or "0X" => new[] { ModbusArea.Coil },
+                "DI" or "1X" => new[] { ModbusArea.DiscreteInput },
+                null => new[] { ModbusArea.HoldingRegister, ModbusArea.InputRegister, ModbusArea.Coil, ModbusArea.DiscreteInput },
+                _ => throw new FormatException($"Prefixo '{r.Prefix}' inválido. Use HR, IR, CO ou DI.")
+            };
+            jobs.AddRange(areas.Select(a => (a, r.Start, r.End)));
+        }
+
+        var totalAddresses = jobs.Sum(j => (double)(j.End - j.Start + 1));
+        var covered = 0.0;
+
+        foreach (var (area, start, end) in jobs)
+        {
+            var isBit = area is ModbusArea.Coil or ModbusArea.DiscreteInput;
+            var function = area switch
+            {
+                ModbusArea.Coil => (byte)0x01,
+                ModbusArea.DiscreteInput => (byte)0x02,
+                ModbusArea.HoldingRegister => (byte)0x03,
+                _ => (byte)0x04
+            };
+            var maxCount = isBit ? 2000 : 125;
+            var valid = new List<(int Start, int Count, int NonZero)>();
+            var unsupported = false;
+
+            // Lê "count" endereços a partir de "first"; devolve nulo se o equipamento disser que o endereço não existe.
+            async Task<int?> TryReadAsync(int first, int count)
+            {
+                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    return isBit
+                        ? (await client.ReadBitsAsync(_unitId, function, (ushort)first, (ushort)count, ct).ConfigureAwait(false)).Count(b => b)
+                        : (await client.ReadRegistersAsync(_unitId, function, (ushort)first, (ushort)count, ct).ConfigureAwait(false)).Count(v => v != 0);
+                }
+                catch (ModbusException ex) when (ex.ExceptionCode is 0x02 or 0x03)
+                {
+                    return null;
+                }
+            }
+
+            // Anda endereço por endereço; ao achar um que existe, dobra o tamanho da leitura até falhar
+            // e faz busca binária do fim da faixa. Custo: ~1 pedido por endereço inexistente + poucos por faixa.
+            try
+            {
+                var a = start;
+                while (a <= end)
+                {
+                    var single = await TryReadAsync(a, 1).ConfigureAwait(false);
+                    if (single is null)
+                    {
+                        a++;
+                        if ((a - start) % 20 == 0) progress?.Report((covered + a - start) / totalAddresses);
+                        continue;
+                    }
+
+                    int ok = 1, okNonZero = single.Value;
+                    int? fail = null;
+                    var limit = Math.Min(maxCount, end - a + 1);
+                    while (fail is null && ok < limit)
+                    {
+                        var n = Math.Min(ok * 2, limit);
+                        var r = await TryReadAsync(a, n).ConfigureAwait(false);
+                        if (r is null) fail = n; else { ok = n; okNonZero = r.Value; }
+                    }
+                    while (fail is { } f && f - ok > 1)
+                    {
+                        var m = (ok + f) / 2;
+                        var r = await TryReadAsync(a, m).ConfigureAwait(false);
+                        if (r is null) fail = m; else { ok = m; okNonZero = r.Value; }
+                    }
+
+                    valid.Add((a, ok, okNonZero));
+                    a += ok;
+                    progress?.Report((covered + a - start) / totalAddresses);
+                }
+            }
+            catch (ModbusException ex) when (ex.ExceptionCode == 0x01)
+            {
+                unsupported = true; // área (função) não suportada pelo equipamento
+            }
+
+            covered += end - start + 1;
+            progress?.Report(covered / totalAddresses);
+
+            var prefix = ModbusAddress.Prefix(area);
+            var unit = isBit ? "bits" : "registradores";
+            if (unsupported)
+            {
+                onFound(new AddressBlock(prefix, start, 0, $"{prefix} (área inteira)", "o equipamento não suporta esta área (Illegal Function)", false));
+                continue;
+            }
+
+            // Junta blocos vizinhos em faixas contínuas
+            foreach (var group in MergeRanges(valid))
+            {
+                var last = group.Start + group.Count - 1;
+                var detail = isBit ? $"{group.Count} {unit} · {group.NonZero} ligados" : $"{group.Count} {unit} · {group.NonZero} com valor ≠ 0";
+                onFound(new AddressBlock(prefix, group.Start, group.Count, group.Count == 1 ? $"{prefix}:{group.Start}" : $"{prefix}:{group.Start}–{last}", detail));
+            }
+        }
+        progress?.Report(1.0);
+    }
+
+    private static IEnumerable<(int Start, int Count, int NonZero)> MergeRanges(IEnumerable<(int Start, int Count, int NonZero)> blocks)
+    {
+        (int Start, int Count, int NonZero)? current = null;
+        foreach (var b in blocks.OrderBy(b => b.Start))
+        {
+            if (current is { } c && c.Start + c.Count == b.Start)
+            {
+                current = (c.Start, c.Count + b.Count, c.NonZero + b.NonZero);
+                continue;
+            }
+            if (current is { } done) yield return done;
+            current = b;
+        }
+        if (current is { } final) yield return final;
+    }
+
+    public void ApplyScanResults(ConnectionSettings settings, IReadOnlyList<AddressBlock> selected)
+    {
+        settings.Options["ScanRanges"] = string.Join("; ", selected
+            .Where(b => b.Accessible && b.Count > 0)
+            .OrderBy(b => b.Area).ThenBy(b => b.Start)
+            .Select(b => $"{b.Area}:{b.Start}-{b.Start + b.Count - 1}"));
     }
 
     protected override async Task<object?> ReadCoreAsync(TagAddress address, CancellationToken ct)

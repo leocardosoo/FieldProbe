@@ -43,3 +43,31 @@ public interface IRegisterInspector
 {
     Task<ushort[]> ReadRawRegistersAsync(string address, int count, CancellationToken ct = default);
 }
+
+/// <summary>Bloco de endereços encontrado pela busca (ex.: DB10 com 6 bytes, ou HR:100–149).</summary>
+/// <param name="Area">Área ("DB", "HR", "IR", "CO", "DI").</param>
+/// <param name="Start">S7: número do DB · Modbus: primeiro endereço (offset 0-based).</param>
+/// <param name="Count">S7: tamanho em bytes · Modbus: quantidade de endereços.</param>
+/// <param name="Accessible">Falso quando o bloco existe mas recusa leitura (ex.: DB otimizado).</param>
+public sealed record AddressBlock(string Area, int Start, int Count, string Title, string Detail, bool Accessible = true);
+
+/// <summary>
+/// Drivers sem navegação nativa (S7 PUT/GET, Modbus) que conseguem procurar quais endereços existem no equipamento.
+/// A busca é sempre iniciada pelo usuário e feita em lote, para não sobrecarregar o equipamento.
+/// </summary>
+public interface IAddressScanner
+{
+    /// <summary>Título da janela (ex.: "Procurar DBs").</summary>
+    string AddressScanTitle { get; }
+
+    /// <summary>Explicação curta do que será procurado e do formato da faixa.</summary>
+    string AddressScanHelp { get; }
+
+    /// <summary>Faixa sugerida (ex.: "1-1000" ou "0-999").</summary>
+    string DefaultScanRange { get; }
+
+    Task ScanAddressesAsync(string range, IProgress<double>? progress, Action<AddressBlock> onFound, CancellationToken ct);
+
+    /// <summary>Grava os blocos escolhidos nas opções da conexão, para a árvore mostrar só o que existe.</summary>
+    void ApplyScanResults(ConnectionSettings settings, IReadOnlyList<AddressBlock> selected);
+}

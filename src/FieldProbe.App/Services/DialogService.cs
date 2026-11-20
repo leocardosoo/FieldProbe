@@ -24,6 +24,12 @@ public static class DialogService
         new DiagnosticsWindow(title, items) { Owner = Owner }.Show();
     }
 
+    public static IReadOnlyList<AddressBlock>? ScanAddresses(IAddressScanner scanner, string connectionName)
+    {
+        var dialog = new AddressScanWindow(scanner, connectionName) { Owner = Owner };
+        return dialog.ShowDialog() == true ? dialog.Selected : null;
+    }
+
     public static bool EditWatchItem(WatchItemViewModel item)
     {
         var dialog = new WatchItemDialog(new WatchItemEditorViewModel(item)) { Owner = Owner };

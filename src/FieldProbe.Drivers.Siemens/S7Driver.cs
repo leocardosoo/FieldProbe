@@ -11,7 +11,7 @@ namespace FieldProbe.Drivers.Siemens;
 /// Driver Siemens S7 (S7-200/300/400/1200/1500) via S7netplus.
 /// Para S7-1200/1500: habilitar PUT/GET e usar DBs com acesso "não otimizado".
 /// </summary>
-public sealed class S7Driver : DriverBase, IDiagnosticsProvider
+public sealed class S7Driver : DriverBase, IDiagnosticsProvider, IAddressScanner
 {
     public const string Protocol = "Siemens S7";
 
@@ -123,13 +123,32 @@ public sealed class S7Driver : DriverBase, IDiagnosticsProvider
             .Distinct()
             .ToList();
 
+        // Resultado de "Procurar DBs": tamanho de cada DB e DBs que existem mas recusam leitura
+        var sizes = ParseSizes(Settings?.GetOption("DbSizes", string.Empty) ?? string.Empty);
+        var locked = (Settings?.GetOption("DbLocked", string.Empty) ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(x => int.TryParse(x, out var n) ? n : -1)
+            .ToHashSet();
+
         var roots = new List<TagNode>();
         foreach (var db in dbs)
         {
-            var folder = new TagNode($"DB{db}");
-            for (var i = 0; i < 8; i++) folder.Children.Add(Leaf($"DB{db}.DBX0.{i}", FpDataType.Bool));
-            for (var i = 0; i < 20; i += 2) folder.Children.Add(Leaf($"DB{db}.DBW{i}", FpDataType.Int16));
-            for (var i = 0; i < 20; i += 4) folder.Children.Add(Leaf($"DB{db}.DBD{i}", FpDataType.Float32));
+            if (locked.Contains(db))
+            {
+                roots.Add(new TagNode($"DB{db} (sem acesso: DB otimizado ou protegido)")
+                {
+                    Description = "No TIA Portal, desmarque 'Optimized block access' nas propriedades do DB"
+                });
+                continue;
+            }
+
+            // Sem tamanho conhecido: sugestões padrão. Com tamanho: só posições que cabem no DB.
+            var size = sizes.TryGetValue(db, out var known) ? known : 20;
+            var folder = new TagNode(sizes.ContainsKey(db) ? $"DB{db} ({size} bytes)" : $"DB{db}");
+            if (size >= 1)
+                for (var i = 0; i < 8; i++) folder.Children.Add(Leaf($"DB{db}.DBX0.{i}", FpDataType.Bool));
+            for (int i = 0, n = 0; i + 2 <= size && n < 20; i += 2, n++) folder.Children.Add(Leaf($"DB{db}.DBW{i}", FpDataType.Int16));
+            for (int i = 0, n = 0; i + 4 <= size && n < 10; i += 4, n++) folder.Children.Add(Leaf($"DB{db}.DBD{i}", FpDataType.Float32));
             roots.Add(folder);
         }
 
@@ -152,6 +171,108 @@ public sealed class S7Driver : DriverBase, IDiagnosticsProvider
     }
 
     private static TagNode Leaf(string address, FpDataType type) => new(address, new TagAddress(address, type));
+
+    private static Dictionary<int, int> ParseSizes(string text)
+    {
+        var sizes = new Dictionary<int, int>();
+        foreach (var pair in text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var parts = pair.Split(':');
+            if (parts.Length == 2 && int.TryParse(parts[0], out var db) && int.TryParse(parts[1], out var size))
+                sizes[db] = size;
+        }
+        return sizes;
+    }
+
+    // ===================== Procurar DBs =====================
+
+    public string AddressScanTitle => "Procurar DBs";
+
+    public string AddressScanHelp =>
+        "Procura quais DBs existem no CLP e o tamanho de cada um. Faixa de números de DB, ex.: 1-1000 ou 1-200, 500-600. " +
+        "As leituras são de 1 byte, em lote (até 18 DBs por pedido): nada é escrito. " +
+        "O tipo de cada posição continua vindo do projeto do TIA Portal.";
+
+    public string DefaultScanRange => "1-1000";
+
+    public async Task ScanAddressesAsync(string range, IProgress<double>? progress, Action<AddressBlock> onFound, CancellationToken ct)
+    {
+        var s = Settings ?? throw new InvalidOperationException("Conecte primeiro.");
+        var numbers = AddressRangeParser.Parse(range, 1, 65535, 10000)
+            .SelectMany(r => Enumerable.Range(r.Start, r.Count))
+            .Distinct()
+            .ToList();
+
+        OnTrace($"Procurando DBs: {numbers.Count} números ({range})", FrameDirection.Tx);
+        await using var system = await S7SystemClient.ConnectAsync(s.Host, s.Port > 0 ? s.Port : 102,
+            s.GetIntOption("Rack", 0), s.GetIntOption("Slot", 1), s.TimeoutMs, ct).ConfigureAwait(false);
+
+        // 1ª etapa: quais DBs existem (1 byte do início de cada um, em lote)
+        var readable = new List<int>();
+        var denied = new List<int>();
+        var empty = new List<int>();
+        for (var i = 0; i < numbers.Count; i += S7SystemClient.MaxProbeItems)
+        {
+            var chunk = numbers.Skip(i).Take(S7SystemClient.MaxProbeItems).ToList();
+            var codes = await system.ProbeDbBytesAsync(chunk.Select(db => (db, 0)).ToList(), ct).ConfigureAwait(false);
+            for (var k = 0; k < chunk.Count; k++)
+            {
+                switch (codes[k])
+                {
+                    case S7SystemClient.ReturnOk: readable.Add(chunk[k]); break;
+                    case S7SystemClient.ReturnAccessDenied: denied.Add(chunk[k]); break;
+                    case S7SystemClient.ReturnOutOfRange: empty.Add(chunk[k]); break;
+                }
+            }
+            progress?.Report(0.6 * Math.Min(numbers.Count, i + chunk.Count) / numbers.Count);
+        }
+
+        if (readable.Count == 0 && empty.Count == 0 && denied.Count == numbers.Count && numbers.Count >= 5)
+            throw new InvalidOperationException(
+                "O CLP recusou a leitura de todos os DBs: o acesso PUT/GET parece desabilitado. No TIA Portal: Propriedades da CPU → Proteção → 'Permit access with PUT/GET'.");
+
+        foreach (var db in denied)
+            onFound(new AddressBlock("DB", db, 0, $"DB{db}", "existe, mas recusa leitura: DB otimizado ou protegido", false));
+        foreach (var db in empty)
+            onFound(new AddressBlock("DB", db, 0, $"DB{db}", "existe, mas não permite leitura por offset (vazio ou otimizado)", false));
+
+        // 2ª etapa: tamanho de cada DB legível (busca binária, todos os DBs juntos em cada rodada)
+        var low = readable.ToDictionary(db => db, _ => 0);        // último offset que leu
+        var high = readable.ToDictionary(db => db, _ => 65536);   // primeiro offset que falhou
+        var rounds = 0;
+        while (true)
+        {
+            var active = readable.Where(db => high[db] - low[db] > 1).ToList();
+            if (active.Count == 0) break;
+            for (var i = 0; i < active.Count; i += S7SystemClient.MaxProbeItems)
+            {
+                var chunk = active.Skip(i).Take(S7SystemClient.MaxProbeItems).ToList();
+                var probes = chunk.Select(db => (db, (low[db] + high[db]) / 2)).ToList();
+                var codes = await system.ProbeDbBytesAsync(probes, ct).ConfigureAwait(false);
+                for (var k = 0; k < chunk.Count; k++)
+                {
+                    if (codes[k] == S7SystemClient.ReturnOk) low[chunk[k]] = probes[k].Item2;
+                    else high[chunk[k]] = probes[k].Item2;
+                }
+            }
+            rounds++;
+            progress?.Report(0.6 + 0.4 * Math.Min(1.0, rounds / 17.0));
+        }
+
+        foreach (var db in readable)
+            onFound(new AddressBlock("DB", db, low[db] + 1, $"DB{db}", $"{low[db] + 1} bytes", true));
+
+        progress?.Report(1.0);
+        OnTrace($"Busca concluída: {readable.Count} DB(s) legíveis, {denied.Count + empty.Count} sem acesso", FrameDirection.Rx);
+    }
+
+    public void ApplyScanResults(ConnectionSettings settings, IReadOnlyList<AddressBlock> selected)
+    {
+        var dbs = selected.Where(b => b.Area == "DB").OrderBy(b => b.Start).ToList();
+        settings.Options["DbList"] = string.Join(", ", dbs.Select(b => b.Start));
+        settings.Options["DbSizes"] = string.Join(",", dbs.Where(b => b.Accessible).Select(b => $"{b.Start}:{b.Count}"));
+        settings.Options["DbLocked"] = string.Join(",", dbs.Where(b => !b.Accessible).Select(b => b.Start));
+    }
 
     protected override async Task<object?> ReadCoreAsync(TagAddress address, CancellationToken ct)
     {
@@ -315,8 +436,12 @@ public sealed class S7Driver : DriverBase, IDiagnosticsProvider
     private static string Explain(Exception ex)
     {
         var message = ex.GetBaseException().Message;
-        if (message.Contains("Access", StringComparison.OrdinalIgnoreCase) || message.Contains("0x05", StringComparison.OrdinalIgnoreCase) || message.Contains("Object does not exist", StringComparison.OrdinalIgnoreCase))
-            return $"{message}. No TIA Portal: habilite 'Permit access with PUT/GET', desmarque 'Optimized block access' no DB e confira se o DB/offset existe.";
+        if (message.Contains("does not exist", StringComparison.OrdinalIgnoreCase))
+            return $"O DB (ou área) não existe no CLP: confira o número do DB no projeto do TIA Portal. ({message})";
+        if (message.Contains("out of range", StringComparison.OrdinalIgnoreCase))
+            return $"Endereço além do tamanho do DB/área: o DB é menor que esse offset; confira o offset no TIA Portal. ({message})";
+        if (message.Contains("not allowed", StringComparison.OrdinalIgnoreCase) || message.Contains("Access", StringComparison.OrdinalIgnoreCase))
+            return $"Acesso negado pelo CLP: no TIA Portal habilite 'Permit access with PUT/GET' e desmarque 'Optimized block access' no DB. ({message})";
         if (message.Contains("connect", StringComparison.OrdinalIgnoreCase) || message.Contains("TPKT", StringComparison.OrdinalIgnoreCase) || message.Contains("COTP", StringComparison.OrdinalIgnoreCase))
             return $"{message}. Confira IP, rack/slot (S7-300: 0/2 · S7-1200/1500: 0/1) e se a porta 102 está liberada.";
         return message;

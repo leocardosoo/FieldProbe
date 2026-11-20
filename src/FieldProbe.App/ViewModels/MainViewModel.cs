@@ -71,6 +71,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ConnectAllCommand = new AsyncRelayCommand(ConnectAllAsync, HandleError, () => Connections.Any(c => !c.IsOpen));
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, HandleError, () => SelectedConnection is { IsOpen: true });
         DiagnosticsCommand = new AsyncRelayCommand(DiagnosticsAsync, HandleError, () => SelectedConnection is { IsOpen: true, SupportsDiagnostics: true });
+        ScanAddressesCommand = new AsyncRelayCommand(ScanAddressesAsync, HandleError, () => SelectedConnection is { IsOpen: true, SupportsAddressScan: true });
         RemoveConnectionCommand = new AsyncRelayCommand(RemoveConnectionAsync, HandleError, () => SelectedConnection is not null);
 
         AddManualWatchCommand = new RelayCommand(AddManualWatch, () => TargetConnection is not null && ManualAddress.Trim().Length > 0);
@@ -255,6 +256,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ICommand ConnectAllCommand { get; }
     public ICommand RefreshCommand { get; }
     public ICommand DiagnosticsCommand { get; }
+
+    public ICommand ScanAddressesCommand { get; }
     public ICommand RemoveConnectionCommand { get; }
     public ICommand AddManualWatchCommand { get; }
     public ICommand AddSelectedNodeCommand { get; }
@@ -478,6 +481,21 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         var connection = SelectedConnection!;
         await connection.RefreshAsync();
         StatusText = $"{connection.Name}: árvore atualizada";
+    }
+
+    private async Task ScanAddressesAsync()
+    {
+        var connection = SelectedConnection!;
+        if (connection.Driver is not IAddressScanner scanner) return;
+
+        var selected = DialogService.ScanAddresses(scanner, connection.Name);
+        if (selected is null) return;
+
+        scanner.ApplyScanResults(connection.Settings, selected);
+        IsDirty = true;
+        await connection.RefreshAsync();
+        AddLog(connection.Name, "INFO", $"{scanner.AddressScanTitle}: árvore atualizada com {selected.Count} bloco(s)");
+        StatusText = $"{connection.Name}: árvore atualizada com o resultado da busca";
     }
 
     private async Task DiagnosticsAsync()

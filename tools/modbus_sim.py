@@ -10,6 +10,9 @@ Uso:
     python modbus_sim.py --drop 10        # 10% das requisições sem resposta (testa timeout)
     python modbus_sim.py --unit 1         # só responde ao Unit ID 1 (padrão: qualquer)
     python modbus_sim.py -v               # mostra cada requisição
+    python modbus_sim.py --mapa-real      # como um equipamento real: só algumas faixas existem
+                                          # (o resto responde "Illegal Data Address"), bom para
+                                          # testar o "Procurar registradores"
 
 Mapa de dados (offsets 0-based, como no app: IR:0, HR:10...):
     IR:0        contador (incrementa a cada segundo)
@@ -24,6 +27,7 @@ Mapa de dados (offsets 0-based, como no app: IR:0, HR:10...):
     HR:3-6      Float64 = 2.718281828 (ABCD)
     HR:10-14    String "BANCADA-01" (5 registradores)
     HR, CO      demais endereços: memória livre para escrita
+    --mapa-real HR:0-19, HR:100-149, IR:0-9, CO:0-15, DI:0-7 (o resto não existe)
     FC 43       responde à identificação do device (fabricante, código, revisão)
 """
 
@@ -90,11 +94,25 @@ def exception_pdu(function, code):
     return bytes([function | 0x80, code])
 
 
-def check_range(start, count, max_count):
+# Faixas que existem no modo --mapa-real (como num inversor ou medidor real). None = tudo até SIZE.
+REAL_MAP = {
+    0x01: [(0, 15)],                 # CO
+    0x02: [(0, 7)],                  # DI
+    0x03: [(0, 19), (100, 149)],     # HR
+    0x04: [(0, 9)],                  # IR
+}
+VALID = None
+
+
+def check_range(start, count, max_count, function=None):
     if count < 1 or count > max_count:
         return ILLEGAL_VALUE
     if start + count > SIZE:
         return ILLEGAL_ADDRESS
+    if VALID is not None and function in VALID:
+        # o pedido inteiro precisa caber numa faixa que existe
+        if not any(first <= start and start + count - 1 <= last for first, last in VALID[function]):
+            return ILLEGAL_ADDRESS
     return None
 
 
@@ -103,7 +121,7 @@ def handle_pdu(store, pdu):
 
     if function in (0x01, 0x02):  # Read Coils / Discrete Inputs
         start, count = struct.unpack(">HH", pdu[1:5])
-        err = check_range(start, count, 2000)
+        err = check_range(start, count, 2000, function)
         if err:
             return exception_pdu(function, err)
         area = store.coils if function == 0x01 else store.discrete
@@ -115,7 +133,7 @@ def handle_pdu(store, pdu):
 
     if function in (0x03, 0x04):  # Read Holding / Input Registers
         start, count = struct.unpack(">HH", pdu[1:5])
-        err = check_range(start, count, 125)
+        err = check_range(start, count, 125, function)
         if err:
             return exception_pdu(function, err)
         area = store.holding if function == 0x03 else store.input
@@ -214,8 +232,15 @@ async def main():
     parser.add_argument("--unit", type=int, default=0, help="Unit ID aceito (0 = qualquer)")
     parser.add_argument("--delay", type=int, default=0, help="Atraso por resposta em ms")
     parser.add_argument("--drop", type=float, default=0, help="Porcentagem de respostas descartadas")
+    parser.add_argument("--mapa-real", action="store_true",
+                        help="Só HR:0-19, HR:100-149, IR:0-9, CO:0-15, DI:0-7 existem (o resto responde Illegal Data Address)")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
+
+    global VALID
+    if args.mapa_real:
+        VALID = REAL_MAP
+        print("Mapa real: HR:0-19, HR:100-149, IR:0-9, CO:0-15, DI:0-7 (o resto não existe)")
 
     store = DataStore()
     server = await asyncio.start_server(lambda r, w: handle_client(r, w, store, args), args.host, args.port)

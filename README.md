@@ -39,7 +39,7 @@ Também inclui:
    Pela linha de comando: `dotnet run --project src/FieldProbe.App`
 2. Para testar sem hardware, suba um dos simuladores da pasta `tools/` e crie a conexão correspondente.
 
-## Simuladores (pasta `tools/`)
+## Simuladores (`tools/`)
 
 | Simulador | Comando | Conexão no FieldProbe |
 |---|---|---|

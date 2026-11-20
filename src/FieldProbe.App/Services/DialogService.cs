@@ -24,6 +24,13 @@ public static class DialogService
         new DiagnosticsWindow(title, items) { Owner = Owner }.Show();
     }
 
+    public static CustomTag? EditVariable(ConnectionViewModel connection, string folderKey, string folderTitle,
+        CustomTag? existing, string addressHint, Func<string, bool> nameInUse)
+    {
+        var dialog = new VariableDialog(connection, folderKey, folderTitle, existing, addressHint, nameInUse) { Owner = Owner };
+        return dialog.ShowDialog() == true ? dialog.Result : null;
+    }
+
     public static IReadOnlyList<AddressBlock>? ScanAddresses(IAddressScanner scanner, string connectionName)
     {
         var dialog = new AddressScanWindow(scanner, connectionName) { Owner = Owner };

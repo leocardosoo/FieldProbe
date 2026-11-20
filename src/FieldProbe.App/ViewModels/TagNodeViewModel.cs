@@ -44,6 +44,16 @@ public sealed class TagNodeViewModel : ObservableObject
 
     public bool IsVariable => Node.Address is not null;
 
+    /// <summary>Pasta onde o usuário pode criar variáveis (DB de S7, área Modbus): mostra o botão "+".</summary>
+    public bool CanAddVariable => !IsPlaceholder && Node.CustomFolder is not null;
+
+    /// <summary>Variável criada pelo usuário (pode ser editada ou removida).</summary>
+    public bool IsCustom => Node.IsCustom;
+
+    public string? Subtitle => Node.Subtitle;
+
+    public bool HasSubtitle => !string.IsNullOrEmpty(Node.Subtitle);
+
     /// <summary>Glifo Segoe MDL2: pasta, variável ou informação.</summary>
     public string Glyph => IsPlaceholder ? "" : IsVariable ? "" : "";
 

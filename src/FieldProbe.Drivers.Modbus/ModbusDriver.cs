@@ -74,44 +74,62 @@ public sealed class ModbusDriver : DriverBase, IDiagnosticsProvider, IRegisterIn
         if (parent is not null)
             return Task.FromResult<IReadOnlyList<TagNode>>(parent.Children);
 
-        // Modbus não tem browse: árvore sugerida com os primeiros endereços de cada área,
-        // ou só as faixas encontradas por "Procurar registradores".
-        var count = Math.Clamp(Settings?.GetIntOption("BrowseCount", 10) ?? 10, 1, 500);
+        // Modbus não tem browse: cada área mostra as variáveis criadas pelo usuário
+        // e, depois de "Procurar registradores", os endereços que o equipamento aceitou.
         var found = ParseScanRanges(Settings?.GetOption("ScanRanges", string.Empty) ?? string.Empty);
+        var custom = CustomTags.Load(Settings);
 
         TagNode Folder(string name, ModbusArea area, DataType type)
         {
-            if (found is not null)
+            var isRegister = area is ModbusArea.InputRegister or ModbusArea.HoldingRegister;
+            var access = area is ModbusArea.Coil or ModbusArea.HoldingRegister ? "Leitura e escrita. " : "Somente leitura. ";
+            var typeNote = isRegister
+                ? "\nCada registrador tem 16 bits: Float, Int32 e textos ocupam 2 ou mais. Confira o tipo no manual do equipamento ou use o 'Detectar tipo'."
+                : string.Empty;
+
+            // Depois de "Procurar registradores": a pasta mostra quantos endereços existem (faixas no tooltip),
+            // mas só as variáveis criadas pelo usuário aparecem dentro dela.
+            var ranges = found?.Where(r => r.Area == area).ToList();
+            if (ranges is { Count: > 0 })
             {
-                var ranges = found.Where(r => r.Area == area).ToList();
                 var total = ranges.Sum(r => r.Count);
-                var foundFolder = new TagNode(total == 0 ? $"{name} · nenhum encontrado" : $"{name} · {total} encontrados");
-                foreach (var offset in ranges.SelectMany(r => Enumerable.Range(r.Start, r.Count)).Take(300))
+                var prefix = ModbusAddress.Prefix(area);
+                var list = string.Join(", ", ranges.Take(12).Select(r => r.Count == 1 ? $"{prefix}:{r.Start}" : $"{prefix}:{r.Start}–{r.Start + r.Count - 1}"));
+                if (ranges.Count > 12) list += $" e mais {ranges.Count - 12} faixa(s)";
+                var foundFolder = new TagNode(name)
                 {
-                    var address = new ModbusAddress(area, (ushort)offset).ToString();
-                    foundFolder.Children.Add(new TagNode(address, new TagAddress(address, type)));
-                }
+                    Subtitle = $"{total} encontrados",
+                    CustomFolder = prefix,
+                    AddressHint = $"{prefix}:{ranges[0].Start}",
+                    Description = access + $"Endereços que o equipamento aceitou na busca: {list}." + AddNote + typeNote
+                };
+                CustomTags.AddTo(foundFolder, custom);
                 return foundFolder;
             }
 
-            var folder = new TagNode(name);
-            for (var i = 0; i < count; i++)
+            // Sem busca: a pasta começa vazia, só com o "+" (o usuário cria as variáveis com nome e tipo).
+            var folder = new TagNode(name)
             {
-                var address = new ModbusAddress(area, (ushort)i).ToString();
-                folder.Children.Add(new TagNode(address, new TagAddress(address, type)));
-            }
+                CustomFolder = ModbusAddress.Prefix(area),
+                AddressHint = $"{ModbusAddress.Prefix(area)}:0",
+                Description = access + "Clique em + para criar uma variável com o endereço e o tipo do manual do equipamento (ex.: Temperatura = HR:100, Float32). " +
+                              "Use 'Procurar endereços...' para descobrir quais endereços existem." + typeNote
+            };
+            CustomTags.AddTo(folder, custom);
             return folder;
         }
 
         IReadOnlyList<TagNode> roots = new[]
         {
-            Folder("Coils (0x) · leitura/escrita", ModbusArea.Coil, DataType.Bool),
-            Folder("Discrete Inputs (1x) · leitura", ModbusArea.DiscreteInput, DataType.Bool),
-            Folder("Input Registers (3x) · leitura", ModbusArea.InputRegister, DataType.UInt16),
-            Folder("Holding Registers (4x) · leitura/escrita", ModbusArea.HoldingRegister, DataType.UInt16)
+            Folder("Coils (0x)", ModbusArea.Coil, DataType.Bool),
+            Folder("Discrete Inputs (1x)", ModbusArea.DiscreteInput, DataType.Bool),
+            Folder("Input Registers (3x)", ModbusArea.InputRegister, DataType.UInt16),
+            Folder("Holding Registers (4x)", ModbusArea.HoldingRegister, DataType.UInt16)
         };
         return Task.FromResult(roots);
     }
+
+    private const string AddNote = "\nClique em + para criar uma variável com nome, tipo e ordem dos bytes (ex.: Temperatura = HR:100, Float32).";
 
     // ===================== Procurar registradores =====================
 
@@ -385,7 +403,6 @@ public static class ModbusDrivers
     private const string AddressHelp = "HR:0, IR:10, CO:3, DI:7 (offset 0-based) ou 40001, 30011, 00004, 10008 (clássico 1-based)";
 
     private static readonly DriverOption UnitId = new("UnitId", "Unit ID (escravo)", OptionKind.Number, "1", Help: "Endereço do escravo. Em gateways indica o device na rede serial.");
-    private static readonly DriverOption BrowseCount = new("BrowseCount", "Endereços na árvore", OptionKind.Number, "10", Help: "Quantos endereços de cada área aparecem na árvore.");
     private static readonly DriverOption AutoReconnect = new("AutoReconnect", "Reconexão automática", OptionKind.Bool, "true");
 
     public static IEnumerable<DriverInfo> All()
@@ -401,7 +418,7 @@ public static class ModbusDrivers
             AddressExample = "HR:0",
             DefaultDataType = DataType.UInt16,
             SupportsByteOrder = true,
-            Options = new[] { UnitId, BrowseCount, AutoReconnect }
+            Options = new[] { UnitId, AutoReconnect }
         };
 
         yield return new DriverInfo
@@ -426,7 +443,6 @@ public static class ModbusDrivers
                     "O padrão Modbus é Even, mas muitos devices vêm de fábrica com None."),
                 new DriverOption("DataBits", "Data bits", OptionKind.Choice, "8", new[] { "8", "7" }),
                 new DriverOption("StopBits", "Stop bits", OptionKind.Choice, "1", new[] { "1", "2" }),
-                BrowseCount,
                 AutoReconnect
             }
         };
@@ -442,7 +458,7 @@ public static class ModbusDrivers
             AddressExample = "HR:0",
             DefaultDataType = DataType.UInt16,
             SupportsByteOrder = true,
-            Options = new[] { UnitId, BrowseCount, AutoReconnect }
+            Options = new[] { UnitId, AutoReconnect }
         };
     }
 

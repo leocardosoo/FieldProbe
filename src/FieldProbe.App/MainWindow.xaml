@@ -178,6 +178,9 @@
                                 <TreeView.ContextMenu>
                                     <ContextMenu>
                                         <MenuItem Header="Monitorar variável" Command="{Binding AddSelectedNodeCommand}" />
+                                        <MenuItem Header="Adicionar variável..." Command="{Binding AddVariableCommand}" />
+                                        <MenuItem Header="Editar variável..." Command="{Binding EditVariableCommand}" />
+                                        <MenuItem Header="Remover variável" Command="{Binding RemoveVariableCommand}" />
                                         <Separator />
                                         <MenuItem Header="Conectar" Command="{Binding ConnectCommand}" />
                                         <MenuItem Header="Desconectar" Command="{Binding DisconnectCommand}" />
@@ -311,7 +314,28 @@
                                     <HierarchicalDataTemplate DataType="{x:Type vm:TagNodeViewModel}" ItemsSource="{Binding Children}">
                                         <StackPanel Orientation="Horizontal" ToolTip="{Binding ToolTip}">
                                             <TextBlock Text="{Binding Glyph}" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="#0F6CBD" />
-                                            <TextBlock Text="{Binding Name}" />
+                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding Subtitle}" Visibility="{Binding HasSubtitle, Converter={StaticResource BoolToVis}}"
+                                                       FontFamily="Consolas" FontSize="10.5" Foreground="#8C959F" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                            <!-- "+": cria uma variável nesta pasta (DB de S7, área Modbus) -->
+                                            <Button Visibility="{Binding CanAddVariable, Converter={StaticResource BoolToVis}}"
+                                                    Click="AddVariableButton_Click" ToolTip="Adicionar variável nesta pasta"
+                                                    Margin="8,0,0,0" Padding="0" Width="18" Height="18" Cursor="Hand" Focusable="False">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="Bg" Background="Transparent" CornerRadius="4">
+                                                            <TextBlock x:Name="Plus" Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                                                       Foreground="#8C959F" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="Bg" Property="Background" Value="#DDF4FF" />
+                                                                <Setter TargetName="Plus" Property="Foreground" Value="#0F6CBD" />
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                            </Button>
                                         </StackPanel>
                                     </HierarchicalDataTemplate>
                                 </TreeView.Resources>

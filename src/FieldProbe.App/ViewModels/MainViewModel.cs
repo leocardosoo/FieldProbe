@@ -76,6 +76,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         AddManualWatchCommand = new RelayCommand(AddManualWatch, () => TargetConnection is not null && ManualAddress.Trim().Length > 0);
         AddSelectedNodeCommand = new RelayCommand(AddSelectedNode, () => SelectedTreeItem is TagNodeViewModel { IsVariable: true });
+        AddVariableCommand = new RelayCommand(AddVariable, () => SelectedTreeItem is TagNodeViewModel node && (node.CanAddVariable || node.IsCustom));
+        EditVariableCommand = new RelayCommand(EditVariable, () => SelectedTreeItem is TagNodeViewModel { IsCustom: true });
+        RemoveVariableCommand = new RelayCommand(RemoveVariable, () => SelectedTreeItem is TagNodeViewModel { IsCustom: true });
         RemoveWatchCommand = new RelayCommand(RemoveWatch, () => SelectedWatchItem is not null);
         ClearWatchCommand = new RelayCommand(ClearWatch, () => WatchItems.Count > 0);
         WriteCommand = new AsyncRelayCommand(WriteAsync, HandleError, () => SelectedWatchItem is not null && WriteValue.Length > 0);
@@ -92,7 +95,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         AboutCommand = new RelayCommand(DialogService.ShowAbout);
 
         EditWatchCommand = new RelayCommand(EditWatch, () => SelectedWatchItem is not null);
-        DetectTypeCommand = new RelayCommand(DetectType, () => SelectedConnection is { IsOpen: true, Driver: IRegisterInspector } && ManualAddress.Trim().Length > 0);
+        DetectTypeCommand = new RelayCommand(DetectType, () => SelectedConnection is { IsOpen: true, Driver: IRegisterInspector } && IsRegisterAddress(ManualAddress));
         OpenScannerCommand = new RelayCommand(OpenScanner);
         AuditReportCommand = new AsyncRelayCommand(GenerateAuditAsync, HandleError);
         AcknowledgeAlarmsCommand = new RelayCommand(AcknowledgeAlarms, () => Alarms.Any(a => !a.Acknowledged));
@@ -138,6 +141,15 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 ManualAddress = address.Address;
                 ManualDataType = address.DataType;
                 ManualLength = address.Length;
+                if (node.IsCustom) ManualByteOrder = address.ByteOrder;
+            }
+            else if (value is TagNodeViewModel { Node.AddressHint: { } hint } folder)
+            {
+                // Pasta (DB, área Modbus): o campo de endereço acompanha a seleção, já no formato da pasta
+                _addressProtocol = folder.Connection.Protocol;
+                ManualAddress = hint;
+                ManualDataType = DataType.Auto;
+                ManualLength = 1;
             }
         }
     }
@@ -261,6 +273,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ICommand RemoveConnectionCommand { get; }
     public ICommand AddManualWatchCommand { get; }
     public ICommand AddSelectedNodeCommand { get; }
+
+    public ICommand AddVariableCommand { get; }
+
+    public ICommand EditVariableCommand { get; }
+
+    public ICommand RemoveVariableCommand { get; }
     public ICommand RemoveWatchCommand { get; }
     public ICommand ClearWatchCommand { get; }
     public ICommand WriteCommand { get; }
@@ -546,7 +564,105 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private void AddSelectedNode()
     {
         if (SelectedTreeItem is not TagNodeViewModel { Node.Address: { } address } node) return;
+
+        // Variável criada pelo usuário: já tem tipo, ordem dos bytes e nome definidos
+        if (node.IsCustom)
+        {
+            AddWatch(node.Connection, address, PollIntervalMs).DisplayName = node.Name;
+            return;
+        }
         AddWatch(node.Connection, address with { ByteOrder = ManualByteOrder }, PollIntervalMs);
+    }
+
+    // ===================== Variáveis do usuário (botão "+" na árvore) =====================
+
+    private static TagNodeViewModel? FindParent(TagNodeViewModel target)
+    {
+        TagNodeViewModel? Search(IEnumerable<TagNodeViewModel> nodes)
+        {
+            foreach (var node in nodes)
+            {
+                if (node.Children.Contains(target)) return node;
+                if (Search(node.Children) is { } found) return found;
+            }
+            return null;
+        }
+        return Search(target.Connection.Nodes);
+    }
+
+    private static CustomTag ToTag(TagNodeViewModel node) =>
+        new(node.Node.Key ?? string.Empty, node.Name, node.Node.Address!.Address, node.Node.Address.DataType, node.Node.Address.ByteOrder, node.Node.Address.Length);
+
+    private void AddVariable()
+    {
+        if (SelectedTreeItem is not TagNodeViewModel selected) return;
+        var folder = selected.IsCustom ? FindParent(selected) : selected;
+        if (folder is not { CanAddVariable: true }) return;
+
+        var connection = folder.Connection;
+        var tags = CustomTags.Load(connection.Settings);
+        var key = folder.Node.CustomFolder!;
+        var tag = DialogService.EditVariable(connection, key, folder.Name, null, folder.Node.AddressHint ?? string.Empty,
+            name => tags.Any(t => t.Folder == key && string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase)));
+        if (tag is null) return;
+
+        tags.Add(tag);
+        CustomTags.Save(connection.Settings, tags);
+        IsDirty = true;
+
+        // Insere depois das outras variáveis do usuário (antes dos endereços automáticos, no Modbus)
+        var index = folder.Children.Count(c => c.IsCustom);
+        var node = CustomTags.ToNode(tag);
+        folder.Node.Children.Insert(index, node);
+        var item = new TagNodeViewModel(node, connection);
+        folder.Children.Insert(index, item);
+        folder.IsExpanded = true;
+        SelectedTreeItem = item;
+        AddLog(connection.Name, "INFO", $"Variável criada: {tag.Name} = {tag.Summary}");
+    }
+
+    private void EditVariable()
+    {
+        if (SelectedTreeItem is not TagNodeViewModel { IsCustom: true } selected || FindParent(selected) is not { } folder) return;
+
+        var connection = selected.Connection;
+        var tags = CustomTags.Load(connection.Settings);
+        var old = ToTag(selected);
+        var position = tags.FindIndex(t => t.Folder == old.Folder && t.Name == old.Name && t.Address == old.Address);
+        var tag = DialogService.EditVariable(connection, old.Folder, folder.Name, old, old.Address,
+            name => tags.Any(t => t.Folder == old.Folder && !string.Equals(t.Name, old.Name, StringComparison.OrdinalIgnoreCase)
+                                  && string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase)));
+        if (tag is null) return;
+
+        if (position >= 0) tags[position] = tag; else tags.Add(tag);
+        CustomTags.Save(connection.Settings, tags);
+        IsDirty = true;
+
+        var index = folder.Children.IndexOf(selected);
+        var node = CustomTags.ToNode(tag);
+        folder.Node.Children[folder.Node.Children.IndexOf(selected.Node)] = node;
+        var item = new TagNodeViewModel(node, connection);
+        folder.Children[index] = item;
+        SelectedTreeItem = item;
+        AddLog(connection.Name, "INFO", $"Variável editada: {tag.Name} = {tag.Summary}");
+    }
+
+    private void RemoveVariable()
+    {
+        if (SelectedTreeItem is not TagNodeViewModel { IsCustom: true } selected || FindParent(selected) is not { } folder) return;
+        if (!DialogService.Confirm($"Remover a variável '{selected.Name}' da árvore?\n(Itens já monitorados continuam na lista.)")) return;
+
+        var connection = selected.Connection;
+        var old = ToTag(selected);
+        var tags = CustomTags.Load(connection.Settings);
+        tags.RemoveAll(t => t.Folder == old.Folder && t.Name == old.Name && t.Address == old.Address);
+        CustomTags.Save(connection.Settings, tags);
+        IsDirty = true;
+
+        folder.Node.Children.Remove(selected.Node);
+        folder.Children.Remove(selected);
+        SelectedTreeItem = folder;
+        AddLog(connection.Name, "INFO", $"Variável removida: {old.Name}");
     }
 
     public WatchItemViewModel AddWatch(ConnectionViewModel connection, TagAddress address, int intervalMs)
@@ -572,6 +688,20 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         if (!DialogService.EditWatchItem(item)) return;
         IsDirty = true;
         AddLog(item.ConnectionName, "INFO", $"Item editado: {item.Label} ({item.AddressText}, {item.DataType}{(item.HasScaling ? $", {item.ScalingText}" : string.Empty)}{(item.Unit.Length > 0 ? $", {item.Unit}" : string.Empty)})");
+    }
+
+    /// <summary>Detectar tipo só faz sentido em registradores (HR/IR): em bits (CO/DI) o botão fica desabilitado.</summary>
+    private static bool IsRegisterAddress(string text)
+    {
+        if (text.Trim().Length == 0) return false;
+        try
+        {
+            return !ModbusAddress.Parse(text).IsBit;
+        }
+        catch (FormatException)
+        {
+            return true; // deixa clicar: o próprio Detectar tipo explica o formato certo
+        }
     }
 
     private void DetectType()

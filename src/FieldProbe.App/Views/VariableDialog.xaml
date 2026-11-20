@@ -1,0 +1,75 @@
+<Window x:Class="FieldProbe.App.Views.VariableDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Adicionar variável" Width="480" SizeToContent="Height" WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize" ShowInTaskbar="False"
+        FontFamily="Segoe UI" FontSize="12.5" Background="{StaticResource WindowBackground}">
+
+    <Window.Resources>
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+        </Style>
+        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Margin" Value="0,4" />
+            <Setter Property="Padding" Value="4,3" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="Margin" Value="0,4" />
+        </Style>
+    </Window.Resources>
+
+    <StackPanel Margin="16">
+        <TextBlock x:Name="HeaderText" Style="{StaticResource SectionTitle}" FontSize="15" Margin="0,0,0,2" />
+        <TextBlock x:Name="SubHeaderText" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,10" />
+
+        <Border Style="{StaticResource Card}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="110" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="Nome" Style="{StaticResource FieldLabel}" />
+                <TextBox x:Name="NameBox" Grid.Column="1" ToolTip="Como a variável aparece na árvore e na lista (ex.: Velocidade_Linha)" />
+
+                <TextBlock Grid.Row="1" Text="Endereço" Style="{StaticResource FieldLabel}" />
+                <TextBox x:Name="AddressBox" Grid.Row="1" Grid.Column="1" FontFamily="Consolas" />
+
+                <TextBlock Grid.Row="2" Text="Tipo" Style="{StaticResource FieldLabel}" />
+                <ComboBox x:Name="TypeBox" Grid.Row="2" Grid.Column="1" SelectionChanged="TypeBox_SelectionChanged" />
+
+                <TextBlock x:Name="LengthLabel" Grid.Row="3" Text="Tamanho (caracteres)" Style="{StaticResource FieldLabel}" TextWrapping="Wrap" />
+                <TextBox x:Name="LengthBox" Grid.Row="3" Grid.Column="1" Width="80" HorizontalAlignment="Left" />
+
+                <TextBlock x:Name="OrderLabel" Grid.Row="4" Text="Ordem dos bytes" Style="{StaticResource FieldLabel}" />
+                <ComboBox x:Name="OrderBox" Grid.Row="4" Grid.Column="1" Width="120" HorizontalAlignment="Left"
+                          ToolTip="Só para valores de 32/64 bits no Modbus. ABCD = padrão; CDAB = word swap (comum em inversores e medidores)" />
+            </Grid>
+        </Border>
+
+        <Grid Margin="0,10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Button x:Name="TestButton" Content="Testar leitura" MinWidth="110" Click="Test_Click" />
+            <TextBlock x:Name="TestText" Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" FontFamily="Consolas" />
+        </Grid>
+
+        <TextBlock x:Name="ErrorText" Foreground="{StaticResource BadBrush}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,10,0,0" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button Content="Cancelar" IsCancel="True" MinWidth="90" />
+            <Button x:Name="SaveButton" Content="Adicionar" Style="{StaticResource PrimaryButton}" IsDefault="True" MinWidth="90" Margin="0" Click="Save_Click" />
+        </StackPanel>
+    </StackPanel>
+</Window>

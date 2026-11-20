@@ -154,6 +154,16 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Botão "+" de uma pasta da árvore: cria uma variável nela.</summary>
+    private void AddVariableButton_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if ((sender as FrameworkElement)?.DataContext is not TagNodeViewModel folder) return;
+        _viewModel.SelectedTreeItem = folder;
+        if (_viewModel.AddVariableCommand.CanExecute(null))
+            _viewModel.AddVariableCommand.Execute(null);
+    }
+
     /// <summary>Seleciona o item sob o cursor no clique direito (para o menu de contexto agir nele).</summary>
     private void ProjectTree_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {

@@ -130,6 +130,7 @@ public sealed class S7Driver : DriverBase, IDiagnosticsProvider, IAddressScanner
             .Select(x => int.TryParse(x, out var n) ? n : -1)
             .ToHashSet();
 
+        var custom = CustomTags.Load(Settings);
         var roots = new List<TagNode>();
         foreach (var db in dbs)
         {
@@ -142,35 +143,35 @@ public sealed class S7Driver : DriverBase, IDiagnosticsProvider, IAddressScanner
                 continue;
             }
 
-            // Sem tamanho conhecido: sugestões padrão. Com tamanho: só posições que cabem no DB.
-            var size = sizes.TryGetValue(db, out var known) ? known : 20;
-            var folder = new TagNode(sizes.ContainsKey(db) ? $"DB{db} ({size} bytes)" : $"DB{db}");
-            if (size >= 1)
-                for (var i = 0; i < 8; i++) folder.Children.Add(Leaf($"DB{db}.DBX0.{i}", FpDataType.Bool));
-            for (int i = 0, n = 0; i + 2 <= size && n < 20; i += 2, n++) folder.Children.Add(Leaf($"DB{db}.DBW{i}", FpDataType.Int16));
-            for (int i = 0, n = 0; i + 4 <= size && n < 10; i += 4, n++) folder.Children.Add(Leaf($"DB{db}.DBD{i}", FpDataType.Float32));
+            // O CLP não informa as variáveis do DB: o usuário cria as dele (botão "+") com endereço e tipo do TIA Portal.
+            var folder = new TagNode($"DB{db}")
+            {
+                Subtitle = sizes.TryGetValue(db, out var size) ? $"{size} bytes" : null,
+                CustomFolder = $"DB{db}",
+                AddressHint = $"DB{db}.DBD0",
+                Description = (sizes.ContainsKey(db)
+                        ? $"DB{db} existe no CLP e tem {size} bytes."
+                        : $"DB{db} configurado na conexão (use 'Procurar endereços...' para confirmar se existe).") +
+                    "\nO CLP não informa as variáveis do DB: clique em + para adicionar com o endereço e o tipo do projeto do TIA Portal."
+            };
+            CustomTags.AddTo(folder, custom);
             roots.Add(folder);
         }
 
-        var memory = new TagNode("Marcadores (M)");
-        for (var i = 0; i < 8; i++) memory.Children.Add(Leaf($"M0.{i}", FpDataType.Bool));
-        for (var i = 0; i < 10; i += 2) memory.Children.Add(Leaf($"MW{i}", FpDataType.Int16));
-        roots.Add(memory);
+        TagNode Area(string name, string key, string hint, string description)
+        {
+            var area = new TagNode(name) { CustomFolder = key, AddressHint = hint, Description = description + "\nClique em + para adicionar variáveis." };
+            CustomTags.AddTo(area, custom);
+            return area;
+        }
 
-        var inputs = new TagNode("Entradas (I)");
-        for (var i = 0; i < 8; i++) inputs.Children.Add(Leaf($"I0.{i}", FpDataType.Bool));
-        inputs.Children.Add(Leaf("IW0", FpDataType.Int16));
-        roots.Add(inputs);
-
-        var outputs = new TagNode("Saídas (Q)");
-        for (var i = 0; i < 8; i++) outputs.Children.Add(Leaf($"Q0.{i}", FpDataType.Bool));
-        outputs.Children.Add(Leaf("QW0", FpDataType.Int16));
-        roots.Add(outputs);
+        roots.Add(Area("Marcadores (M)", "M", "M0.0", "Memória interna do programa (M0.0, MW10, MD20...)."));
+        roots.Add(Area("Entradas (I)", "I", "I0.0", "Entradas físicas (I0.0, IW64...). Escrever em I não adianta: o CLP sobrescreve a cada ciclo."));
+        roots.Add(Area("Saídas (Q)", "Q", "Q0.0", "Saídas físicas (Q0.0, QW64...). Se o programa também escreve na saída, o CLP sobrescreve a cada ciclo."));
 
         return Task.FromResult<IReadOnlyList<TagNode>>(roots);
     }
 
-    private static TagNode Leaf(string address, FpDataType type) => new(address, new TagAddress(address, type));
 
     private static Dictionary<int, int> ParseSizes(string text)
     {
@@ -190,7 +191,7 @@ public sealed class S7Driver : DriverBase, IDiagnosticsProvider, IAddressScanner
 
     public string AddressScanHelp =>
         "Procura quais DBs existem no CLP e o tamanho de cada um. Faixa de números de DB, ex.: 1-1000 ou 1-200, 500-600. " +
-        "As leituras são de 1 byte, em lote (até 18 DBs por pedido): nada é escrito. " +
+        "As leituras são de 1 byte, em lote (até 18 DBs por pedido): nada é escrito e o CLP quase não sente. " +
         "O tipo de cada posição continua vindo do projeto do TIA Portal.";
 
     public string DefaultScanRange => "1-1000";

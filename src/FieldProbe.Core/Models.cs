@@ -115,6 +115,21 @@ public sealed class TagNode
 
     public string? Description { get; init; }
 
+    /// <summary>Texto secundário mostrado em cinza ao lado do nome (ex.: "DB1.DBD4 · Float32").</summary>
+    public string? Subtitle { get; init; }
+
+    /// <summary>
+    /// Pasta que aceita variáveis criadas pelo usuário (botão "+"), para protocolos sem navegação de símbolos
+    /// (DB de S7, área Modbus). O valor identifica a pasta: "DB1", "M", "HR"...
+    /// </summary>
+    public string? CustomFolder { get; init; }
+
+    /// <summary>Endereço sugerido ao criar uma variável nesta pasta (ex.: "DB1.DBD0").</summary>
+    public string? AddressHint { get; init; }
+
+    /// <summary>Variável criada pelo usuário (pode ser editada ou removida).</summary>
+    public bool IsCustom { get; init; }
+
     /// <summary>Verdadeiro quando os filhos ainda não foram carregados e devem ser buscados com BrowseAsync(node).</summary>
     public bool HasLazyChildren { get; init; }
 

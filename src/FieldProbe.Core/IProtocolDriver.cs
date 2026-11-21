@@ -71,3 +71,12 @@ public interface IAddressScanner
     /// <summary>Grava os blocos escolhidos nas opções da conexão, para a árvore mostrar só o que existe.</summary>
     void ApplyScanResults(ConnectionSettings settings, IReadOnlyList<AddressBlock> selected);
 }
+
+/// <summary>Drivers em que o usuário pode tirar pastas da árvore (ex.: um DB do S7 que não interessa).</summary>
+public interface IRemovableFolders
+{
+    bool CanRemoveFolder(string key);
+
+    /// <summary>Tira a pasta das opções da conexão (a árvore é recriada em seguida).</summary>
+    void RemoveFolder(ConnectionSettings settings, string key);
+}

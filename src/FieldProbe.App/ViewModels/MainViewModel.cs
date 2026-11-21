@@ -76,7 +76,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         AddManualWatchCommand = new RelayCommand(AddManualWatch, () => TargetConnection is not null && ManualAddress.Trim().Length > 0);
         AddSelectedNodeCommand = new RelayCommand(AddSelectedNode, () => SelectedTreeItem is TagNodeViewModel { IsVariable: true });
-        AddVariableCommand = new RelayCommand(AddVariable, () => SelectedTreeItem is TagNodeViewModel node && (node.CanAddVariable || node.IsCustom));
+        AddVariableCommand = new AsyncRelayCommand(AddVariableAsync, HandleError, () =>
+            SelectedTreeItem is TagNodeViewModel node && (node.CanAddVariable || node.IsCustom) ||
+            SelectedTreeItem is ConnectionViewModel { SupportsAddressScan: true });
+        RemoveFolderCommand = new AsyncRelayCommand(RemoveFolderAsync, HandleError, () =>
+            SelectedTreeItem is TagNodeViewModel node && FolderKey(node) is { } key &&
+            node.Connection.Driver is IRemovableFolders removable && removable.CanRemoveFolder(key));
         EditVariableCommand = new RelayCommand(EditVariable, () => SelectedTreeItem is TagNodeViewModel { IsCustom: true });
         RemoveVariableCommand = new RelayCommand(RemoveVariable, () => SelectedTreeItem is TagNodeViewModel { IsCustom: true });
         RemoveWatchCommand = new RelayCommand(RemoveWatch, () => SelectedWatchItem is not null);
@@ -277,6 +282,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ICommand AddVariableCommand { get; }
 
     public ICommand EditVariableCommand { get; }
+
+    public ICommand RemoveFolderCommand { get; }
 
     public ICommand RemoveVariableCommand { get; }
     public ICommand RemoveWatchCommand { get; }
@@ -593,8 +600,15 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private static CustomTag ToTag(TagNodeViewModel node) =>
         new(node.Node.Key ?? string.Empty, node.Name, node.Node.Address!.Address, node.Node.Address.DataType, node.Node.Address.ByteOrder, node.Node.Address.Length);
 
-    private void AddVariable()
+    private async Task AddVariableAsync()
     {
+        // Clicou na conexão: endereço livre, a pasta sai do próprio endereço (cria o DB na árvore se faltar)
+        if (SelectedTreeItem is ConnectionViewModel { SupportsAddressScan: true } target)
+        {
+            await AddFreeVariableAsync(target);
+            return;
+        }
+
         if (SelectedTreeItem is not TagNodeViewModel selected) return;
         var folder = selected.IsCustom ? FindParent(selected) : selected;
         if (folder is not { CanAddVariable: true }) return;
@@ -619,6 +633,64 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         folder.IsExpanded = true;
         SelectedTreeItem = item;
         AddLog(connection.Name, "INFO", $"Variável criada: {tag.Name} = {tag.Summary}");
+    }
+
+    private async Task AddFreeVariableAsync(ConnectionViewModel connection)
+    {
+        var tags = CustomTags.Load(connection.Settings);
+        var tag = DialogService.EditVariable(connection, string.Empty, connection.Name, null, string.Empty,
+            name => tags.Any(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase)));
+        if (tag is null) return;
+
+        tags.Add(tag);
+        CustomTags.Save(connection.Settings, tags);
+
+        // DB que ainda não aparece na árvore: entra na lista de DBs da conexão
+        if (tag.Folder.StartsWith("DB", StringComparison.OrdinalIgnoreCase) && int.TryParse(tag.Folder[2..], out var db))
+        {
+            var list = connection.Settings.Options.TryGetValue("DbList", out var text) ? text : string.Empty;
+            var numbers = list.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => int.TryParse(x, out var n) ? n : -1).Where(n => n > 0).ToList();
+            if (!numbers.Contains(db))
+            {
+                numbers.Add(db);
+                connection.Settings.Options["DbList"] = string.Join(", ", numbers.OrderBy(n => n));
+            }
+        }
+
+        IsDirty = true;
+        await connection.RefreshAsync();
+
+        // Abre a pasta e seleciona a variável nova
+        foreach (var folder in connection.Nodes.Where(n => string.Equals(n.Node.CustomFolder, tag.Folder, StringComparison.OrdinalIgnoreCase)))
+        {
+            folder.IsExpanded = true;
+            SelectedTreeItem = folder.Children.FirstOrDefault(c => c.IsCustom && c.Name == tag.Name) ?? (object)folder;
+        }
+        AddLog(connection.Name, "INFO", $"Variável criada: {tag.Name} = {tag.Summary} (pasta {tag.Folder})");
+    }
+
+    /// <summary>Chave da pasta (ex.: "DB37"), para pastas que não são variáveis.</summary>
+    private static string? FolderKey(TagNodeViewModel node) =>
+        node.IsVariable || node.IsPlaceholder ? null : node.Node.CustomFolder ?? node.Node.Key;
+
+    private async Task RemoveFolderAsync()
+    {
+        if (SelectedTreeItem is not TagNodeViewModel folder || FolderKey(folder) is not { } key ||
+            folder.Connection.Driver is not IRemovableFolders removable) return;
+
+        var connection = folder.Connection;
+        var variables = CustomTags.Load(connection.Settings).Count(t => string.Equals(t.Folder, key, StringComparison.OrdinalIgnoreCase));
+        var message = $"Tirar o {key} da árvore de {connection.Name}?" +
+                      (variables > 0 ? $"\n\nAs {variables} variável(is) criadas nele também serão removidas." : string.Empty) +
+                      "\n\nNada é apagado no CLP: só deixa de aparecer aqui. Itens já monitorados continuam na lista.";
+        if (!DialogService.Confirm(message)) return;
+
+        removable.RemoveFolder(connection.Settings, key);
+        IsDirty = true;
+        await connection.RefreshAsync();
+        SelectedTreeItem = connection;
+        AddLog(connection.Name, "INFO", $"{key} removido da árvore");
     }
 
     private void EditVariable()

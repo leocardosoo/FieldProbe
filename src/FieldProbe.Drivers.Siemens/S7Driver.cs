@@ -11,7 +11,7 @@ namespace FieldProbe.Drivers.Siemens;
 /// Driver Siemens S7 (S7-200/300/400/1200/1500) via S7netplus.
 /// Para S7-1200/1500: habilitar PUT/GET e usar DBs com acesso "não otimizado".
 /// </summary>
-public sealed class S7Driver : DriverBase, IDiagnosticsProvider, IAddressScanner
+public sealed class S7Driver : DriverBase, IDiagnosticsProvider, IAddressScanner, IRemovableFolders
 {
     public const string Protocol = "Siemens S7";
 
@@ -116,7 +116,7 @@ public sealed class S7Driver : DriverBase, IDiagnosticsProvider, IAddressScanner
             return Task.FromResult<IReadOnlyList<TagNode>>(parent.Children);
 
         // S7 "clássico" não expõe símbolos: árvore sugerida com os DBs configurados.
-        var dbs = (Settings?.GetOption("DbList", "1") ?? "1")
+        var dbs = (Settings?.GetOption("DbList", string.Empty) ?? string.Empty)
             .Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(x => int.TryParse(x, out var n) ? n : -1)
             .Where(n => n > 0)
@@ -138,6 +138,7 @@ public sealed class S7Driver : DriverBase, IDiagnosticsProvider, IAddressScanner
             {
                 roots.Add(new TagNode($"DB{db} (sem acesso: DB otimizado ou protegido)")
                 {
+                    Key = $"DB{db}",
                     Description = "No TIA Portal, desmarque 'Optimized block access' nas propriedades do DB"
                 });
                 continue;
@@ -183,6 +184,26 @@ public sealed class S7Driver : DriverBase, IDiagnosticsProvider, IAddressScanner
                 sizes[db] = size;
         }
         return sizes;
+    }
+
+    // ===================== Remover DB da árvore =====================
+
+    public bool CanRemoveFolder(string key) =>
+        key.StartsWith("DB", StringComparison.OrdinalIgnoreCase) && int.TryParse(key[2..], out _);
+
+    public void RemoveFolder(ConnectionSettings settings, string key)
+    {
+        if (!CanRemoveFolder(key)) return;
+        var db = int.Parse(key[2..]);
+
+        static string Without(string text, int db, bool pairs) => string.Join(pairs ? "," : ", ", text
+            .Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(x => !int.TryParse(pairs ? x.Split(':')[0] : x, out var n) || n != db));
+
+        settings.Options["DbList"] = Without(settings.GetOption("DbList", string.Empty), db, false);
+        settings.Options["DbSizes"] = Without(settings.GetOption("DbSizes", string.Empty), db, true);
+        settings.Options["DbLocked"] = Without(settings.GetOption("DbLocked", string.Empty), db, false);
+        CustomTags.Save(settings, CustomTags.Load(settings).Where(t => !string.Equals(t.Folder, key, StringComparison.OrdinalIgnoreCase)));
     }
 
     // ===================== Procurar DBs =====================
@@ -354,7 +375,8 @@ public sealed class S7Driver : DriverBase, IDiagnosticsProvider, IAddressScanner
         await EnsureConnectedAsync(ct).ConfigureAwait(false);
         items.Add(new("Sessão", $"Conectado · tamanho de PDU negociado: {_plc!.MaxPDUSize} bytes", DiagnosticSeverity.Ok));
 
-        var firstDb = (s?.GetOption("DbList", "1") ?? "1").Split(',')[0].Trim();
+        var firstDb = (s?.GetOption("DbList", string.Empty) ?? string.Empty).Split(',')[0].Trim();
+        if (!int.TryParse(firstDb, out _)) firstDb = "1";
         try
         {
             await _plc.ReadBytesAsync(S7Area.DataBlock, int.Parse(firstDb), 0, 1, ct).ConfigureAwait(false);
@@ -466,7 +488,7 @@ public static class S7Drivers
             new DriverOption("Cpu", "CPU", OptionKind.Choice, "S7-1200", new[] { "S7-1200", "S7-1500", "S7-300", "S7-400", "S7-200" }),
             new DriverOption("Rack", "Rack", OptionKind.Number, "0"),
             new DriverOption("Slot", "Slot", OptionKind.Number, "1", Help: "S7-1200/1500: 1 · S7-300: 2 · S7-400: conforme o hardware."),
-            new DriverOption("DbList", "DBs na árvore", OptionKind.Text, "1", Help: "Ex.: 1, 10, 100"),
+            new DriverOption("DbList", "DBs na árvore", OptionKind.Text, "", Help: "Opcional. Preenchido pelo 'Procurar endereços...' ou ao adicionar uma variável. Ex.: 1, 10, 100"),
             new DriverOption("AutoReconnect", "Reconexão automática", OptionKind.Bool, "true")
         }
     };

@@ -178,9 +178,11 @@
                                 <TreeView.ContextMenu>
                                     <ContextMenu>
                                         <MenuItem Header="Monitorar variável" Command="{Binding AddSelectedNodeCommand}" />
-                                        <MenuItem Header="Adicionar variável..." Command="{Binding AddVariableCommand}" />
+                                        <MenuItem Header="Adicionar variável..." Command="{Binding AddVariableCommand}"
+                                                  ToolTip="Na conexão: qualquer endereço (ex.: DB12.DBD4, HR:100). Numa pasta: variável dentro dela" />
                                         <MenuItem Header="Editar variável..." Command="{Binding EditVariableCommand}" />
                                         <MenuItem Header="Remover variável" Command="{Binding RemoveVariableCommand}" />
+                                        <MenuItem Header="Remover DB da árvore" Command="{Binding RemoveFolderCommand}" />
                                         <Separator />
                                         <MenuItem Header="Conectar" Command="{Binding ConnectCommand}" />
                                         <MenuItem Header="Desconectar" Command="{Binding DisconnectCommand}" />
@@ -402,7 +404,8 @@
                                     <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE710;" Foreground="White" FontSize="12" Margin="0,0,6,0" /><TextBlock Text="Monitorar" Foreground="White" Margin="0" /></StackPanel>
                                 </Button>
                                 <Button Command="{Binding DetectTypeCommand}" Visibility="{Binding CanDetectType, Converter={StaticResource BoolToVis}}"
-                                        ToolTip="Lê o registrador e mostra todas as interpretações (UInt16, Int16, Float32 em todas as ordens...)">
+                                        ToolTip="Lê o registrador e mostra todas as interpretações (UInt16, Int16, Float32 em todas as ordens...). Só para registradores HR/IR: Coils e Discrete Inputs são bits"
+                                        ToolTipService.ShowOnDisabled="True">
                                     <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE721;" FontSize="12" Margin="0,0,6,0" /><TextBlock Text="Detectar tipo" Foreground="{StaticResource TextBrush}" Margin="0" /></StackPanel>
                                 </Button>
                             </WrapPanel>

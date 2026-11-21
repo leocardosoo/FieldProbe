@@ -1,7 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using FieldProbe.App.ViewModels;
+using System.Text.RegularExpressions;
 using FieldProbe.Core;
+using FieldProbe.Drivers.Modbus;
 
 namespace FieldProbe.App.Views;
 
@@ -9,9 +11,10 @@ namespace FieldProbe.App.Views;
 public partial class VariableDialog : Window
 {
     private readonly ConnectionViewModel _connection;
-    private readonly string _folderKey;
+    private readonly string _folderKey;   // vazio = endereço livre (a pasta sai do endereço)
     private readonly Func<string, bool> _nameInUse;
     private readonly bool _isModbus;
+    private readonly int? _dbSize;
 
     public VariableDialog(ConnectionViewModel connection, string folderKey, string folderTitle, CustomTag? existing,
         string addressHint, Func<string, bool> nameInUse)
@@ -21,13 +24,21 @@ public partial class VariableDialog : Window
         _folderKey = folderKey;
         _nameInUse = nameInUse;
         _isModbus = connection.Protocol.Contains("Modbus", StringComparison.OrdinalIgnoreCase);
+        _dbSize = FindDbSize(connection.Settings, folderKey);
 
         Title = existing is null ? "Adicionar variável" : "Editar variável";
         SaveButton.Content = existing is null ? "Adicionar" : "Salvar";
-        HeaderText.Text = $"{Title} · {folderTitle}";
+        HeaderText.Text = folderKey.Length == 0 ? $"{Title} · {connection.Name}" : $"{Title} · {folderTitle}";
         SubHeaderText.Text = _isModbus
             ? "Use o endereço e o tipo do manual do equipamento (ex.: HR:100, Float32). Valores de 32 bits ocupam 2 registradores."
             : "Use o endereço e o tipo do projeto do TIA Portal (coluna Offset do DB). Ex.: DB1.DBD4 = Real, DB1.DBW2 = Int, DB1.DBX0.0 = Bool.";
+        if (_dbSize is int size && size > 0)
+        {
+            var limits = $"{folderKey} tem {size} bytes (offset 0 a {size - 1}): último bit {folderKey}.DBX{size - 1}.7";
+            if (size >= 2) limits += $" · último Int {folderKey}.DBW{size - 2}";
+            if (size >= 4) limits += $" · último Real/DInt {folderKey}.DBD{size - 4}";
+            SubHeaderText.Text += "\n" + limits + ".";
+        }
 
         TypeBox.ItemsSource = Enum.GetValues<DataType>().Where(t => t != DataType.Auto).ToArray();
         OrderBox.ItemsSource = Enum.GetValues<ByteOrder>();
@@ -79,8 +90,15 @@ public partial class VariableDialog : Window
         var type = TypeBox.SelectedItem is DataType t ? t : DataType.Float32;
 
         if (checkName && name.Length == 0) return Fail("Informe um nome para a variável.");
-        if (checkName && _nameInUse(name)) return Fail($"Já existe uma variável '{name}' nesta pasta.");
         if (address.Length == 0) return Fail("Informe o endereço.");
+
+        // Endereço livre: a pasta é descoberta pelo endereço (DB12.DBD0 -> DB12, M10.0 -> M, HR:100 -> HR)
+        var folder = _folderKey.Length > 0 ? _folderKey : FolderFromAddress(address);
+        if (folder is null)
+            return Fail(_isModbus
+                ? "Endereço Modbus inválido. Ex.: HR:100, IR:5, CO:0, DI:3 (ou 40101, 30006...)."
+                : "Endereço S7 inválido. Ex.: DB12.DBD4, DB1.DBX0.0, MW10, M0.1, I0.0, QW2.");
+        if (checkName && _nameInUse(name)) return Fail($"Já existe uma variável '{name}' em {folder}.");
 
         // Variável de um DB precisa estar nesse DB
         if (_folderKey.StartsWith("DB", StringComparison.OrdinalIgnoreCase) &&
@@ -91,14 +109,77 @@ public partial class VariableDialog : Window
         if (type == DataType.String && (!int.TryParse(LengthBox.Text.Trim(), out length) || length is < 1 or > 254))
             return Fail("Tamanho da String: de 1 a 254 caracteres.");
 
+        // Tamanho do DB conhecido (Procurar DBs): avisa antes de ler se o endereço passa do fim
+        if (_dbSize is int dbSize && DbRange(address, type, length) is { } range && range.Start + range.Bytes > dbSize)
+            return Fail($"{_folderKey} tem {dbSize} bytes (offset 0 a {dbSize - 1}). " +
+                        $"{address} ({type}) ocupa os bytes {range.Start} a {range.Start + range.Bytes - 1}: passa do fim do DB." +
+                        (dbSize >= 4 ? $" O último Real/DInt possível é {_folderKey}.DBD{dbSize - 4}." : string.Empty));
+
         var order = _isModbus && OrderBox.SelectedItem is ByteOrder o ? o : ByteOrder.ABCD;
-        return new CustomTag(_folderKey, name.Length > 0 ? name : address, address, type, order, length);
+        return new CustomTag(folder, name.Length > 0 ? name : address, address, type, order, length);
 
         CustomTag? Fail(string message)
         {
             ErrorText.Text = message;
             return null;
         }
+    }
+
+    /// <summary>Pasta da árvore em que o endereço se encaixa, ou nulo se o endereço não for reconhecido.</summary>
+    private string? FolderFromAddress(string address)
+    {
+        if (_isModbus)
+        {
+            try
+            {
+                return ModbusAddress.Prefix(ModbusAddress.Parse(address).Area);
+            }
+            catch (FormatException)
+            {
+                return null;
+            }
+        }
+
+        var a = address.Trim().ToUpperInvariant();
+        var db = Regex.Match(a, @"^DB(\d+)\.DB[XBWD]\d+");
+        if (db.Success && int.TryParse(db.Groups[1].Value, out var number) && number > 0) return $"DB{number}";
+        if (Regex.IsMatch(a, @"^M[BWD]?\d+(\.[0-7])?$")) return "M";
+        if (Regex.IsMatch(a, @"^[IE][BWD]?\d+(\.[0-7])?$")) return "I";
+        if (Regex.IsMatch(a, @"^[QA][BWD]?\d+(\.[0-7])?$")) return "Q";
+        return null;
+    }
+
+    /// <summary>Tamanho do DB guardado pelo "Procurar DBs" (opção DbSizes = "1:48,2:20"), se houver.</summary>
+    private static int? FindDbSize(ConnectionSettings settings, string folderKey)
+    {
+        if (!folderKey.StartsWith("DB", StringComparison.OrdinalIgnoreCase) || !int.TryParse(folderKey[2..], out var db)) return null;
+        if (!settings.Options.TryGetValue("DbSizes", out var text)) return null;
+        foreach (var pair in text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var parts = pair.Split(':');
+            if (parts.Length == 2 && int.TryParse(parts[0], out var n) && n == db && int.TryParse(parts[1], out var size))
+                return size;
+        }
+        return null;
+    }
+
+    /// <summary>Primeiro byte e quantidade de bytes de um endereço de DB (DBX/DBB/DBW/DBD). Nulo se não reconhecer.</summary>
+    private static (int Start, int Bytes)? DbRange(string address, DataType type, int length)
+    {
+        var dot = address.IndexOf('.');
+        if (dot < 0 || address.Length < dot + 5) return null;
+        var kind = address.Substring(dot + 1, 3).ToUpperInvariant();
+        var rest = address[(dot + 4)..];
+        var number = rest.Split('.')[0];
+        if (!int.TryParse(number, out var start)) return null;
+
+        var bytes = type switch
+        {
+            DataType.String => length + 2,
+            DataType.Float64 or DataType.Int64 => 8,
+            _ => kind switch { "DBX" or "DBB" => 1, "DBW" => 2, "DBD" => 4, _ => 0 }
+        };
+        return bytes == 0 ? null : (start, bytes);
     }
 
     private async void Test_Click(object sender, RoutedEventArgs e)

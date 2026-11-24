@@ -59,6 +59,7 @@
             </MenuItem>
             <MenuItem Header="_Ferramentas">
                 <MenuItem Header="_Scanner de rede OT..." Command="{Binding OpenScannerCommand}" />
+                <MenuItem Header="_Tela de teste (IHM)..." Command="{Binding OpenHmiCommand}" />
                 <MenuItem Header="_Relatório de auditoria de segurança..." Command="{Binding AuditReportCommand}" />
                 <Separator />
                 <MenuItem Header="_Detectar tipo (Modbus)..." Command="{Binding DetectTypeCommand}" />
@@ -110,6 +111,9 @@
                 </Button>
                 <Button Style="{StaticResource ToolButton}" Command="{Binding AuditReportCommand}" ToolTip="Gerar relatório de auditoria de segurança OT (HTML/PDF)">
                     <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xEA18;" /><TextBlock Text="Auditoria" /></StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolButton}" Command="{Binding OpenHmiCommand}" ToolTip="Montar uma tela de teste (IHM) com lâmpadas, botões, mostradores e setpoints ligados às variáveis">
+                    <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE7F4;" /><TextBlock Text="IHM" /></StackPanel>
                 </Button>
                 <Rectangle Width="1" Fill="{StaticResource BorderBrush}" Margin="6,2" />
                 <Button Style="{StaticResource ToolButton}" Command="{Binding ToggleRecordingCommand}"

@@ -19,6 +19,22 @@ public static class DialogService
         return dialog.ShowDialog() == true ? dialog.Result : null;
     }
 
+    private static HmiWindow? _hmi;
+
+    /// <summary>Abre a tela de teste (IHM). Janela própria, fora da principal, para poder ficar em outro monitor.</summary>
+    public static void ShowHmi(MainViewModel main)
+    {
+        if (_hmi is not null)
+        {
+            if (_hmi.WindowState == WindowState.Minimized) _hmi.WindowState = WindowState.Normal;
+            _hmi.Activate();
+            return;
+        }
+        _hmi = new HmiWindow(main);
+        _hmi.Closed += (_, _) => _hmi = null;
+        _hmi.Show();
+    }
+
     public static void ShowPacket(LogEntry entry, DecodedFrame frame)
     {
         new PacketDecoderWindow(entry, frame) { Owner = Owner }.Show();

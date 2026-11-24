@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FieldProbe.App.Hmi;
 using FieldProbe.Core;
 
 namespace FieldProbe.App.Services;
@@ -26,6 +27,9 @@ public sealed class ProjectFile
     public List<ConnectionSettings> Connections { get; set; } = new();
     public List<WatchEntry> WatchItems { get; set; } = new();
 
+    /// <summary>Telas de teste (IHM) montadas pelo usuário.</summary>
+    public List<HmiScreenData> Screens { get; set; } = new();
+
     public static ProjectFile Load(string path)
     {
         var project = JsonSerializer.Deserialize<ProjectFile>(File.ReadAllText(path), Options) ?? new ProjectFile();
@@ -44,7 +48,8 @@ public sealed class ProjectFile
                 TransformSecrets(clone, Protect);
                 return clone;
             }).ToList(),
-            WatchItems = WatchItems
+            WatchItems = WatchItems,
+            Screens = Screens
         };
         File.WriteAllText(path, JsonSerializer.Serialize(copy, Options), Encoding.UTF8);
     }

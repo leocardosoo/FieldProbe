@@ -102,6 +102,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         EditWatchCommand = new RelayCommand(EditWatch, () => SelectedWatchItem is not null);
         DetectTypeCommand = new RelayCommand(DetectType, () => SelectedConnection is { IsOpen: true, Driver: IRegisterInspector } && IsRegisterAddress(ManualAddress));
         OpenScannerCommand = new RelayCommand(OpenScanner);
+        OpenHmiCommand = new RelayCommand(() => DialogService.ShowHmi(this));
         AuditReportCommand = new AsyncRelayCommand(GenerateAuditAsync, HandleError);
         AcknowledgeAlarmsCommand = new RelayCommand(AcknowledgeAlarms, () => Alarms.Any(a => !a.Acknowledged));
         ClearAlarmsCommand = new RelayCommand(() => Alarms.Clear(), () => Alarms.Count > 0);
@@ -115,6 +116,15 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ObservableCollection<ConnectionViewModel> Connections { get; } = new();
 
     public ObservableCollection<WatchItemViewModel> WatchItems { get; } = new();
+
+    /// <summary>Telas de teste (IHM) do projeto.</summary>
+    public List<FieldProbe.App.Hmi.HmiScreenData> HmiScreens { get; private set; } = new();
+
+    /// <summary>O projeto foi trocado (novo/aberto): janelas ligadas ao projeto antigo se fecham.</summary>
+    public event EventHandler? ProjectReplaced;
+
+    /// <summary>Marca o projeto como alterado (ex.: edição na tela de teste).</summary>
+    public void MarkDirty() => IsDirty = true;
 
     public ObservableCollection<LogEntry> Log { get; } = new();
 
@@ -302,6 +312,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public ICommand EditWatchCommand { get; }
     public ICommand DetectTypeCommand { get; }
     public ICommand OpenScannerCommand { get; }
+
+    public ICommand OpenHmiCommand { get; }
     public ICommand AuditReportCommand { get; }
     public ICommand AcknowledgeAlarmsCommand { get; }
     public ICommand ClearAlarmsCommand { get; }
@@ -1054,6 +1066,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             }
         }
 
+        HmiScreens = project.Screens ?? new();
+
         foreach (var entry in project.WatchItems)
         {
             var connection = Connections.FirstOrDefault(c => c.Name == entry.ConnectionName);
@@ -1100,7 +1114,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 AlarmHigh = w.AlarmHigh,
                 AlarmLow = w.AlarmLow,
                 AlarmOnCommFailure = w.AlarmOnCommFailure
-            }).ToList()
+            }).ToList(),
+            Screens = HmiScreens
         }.Save(path);
 
         ProjectPath = path;
@@ -1133,6 +1148,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         foreach (var connection in Connections.Where(c => c.IsOpen).ToList())
             await connection.DisconnectAsync();
         Connections.Clear();
+        HmiScreens = new();
+        ProjectReplaced?.Invoke(this, EventArgs.Empty);
         SelectedTreeItem = null;
         SelectedConnection = null;
         OnPropertyChanged(nameof(Summary));

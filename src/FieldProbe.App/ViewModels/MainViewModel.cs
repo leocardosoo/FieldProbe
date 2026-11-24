@@ -450,7 +450,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 FrameDirection.Rx => "RX",
                 _ => "TRACE"
             };
-            Enqueue(new LogEntry(frame.Timestamp, connection.Name, kind, frame.Description ?? string.Empty, frame.Hex));
+            Enqueue(new LogEntry(frame.Timestamp, connection.Name, kind, frame.Description ?? string.Empty, frame.Hex,
+                frame.Data.Length > 0 ? frame.Data : null, connection.Driver as IFrameDecoder));
         };
 
         connection.Opened += (_, _) =>

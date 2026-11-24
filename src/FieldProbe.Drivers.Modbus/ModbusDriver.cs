@@ -12,7 +12,7 @@ public enum ModbusMode
 }
 
 /// <summary>Driver Modbus (TCP, RTU serial e RTU sobre TCP), com identificação do device (FC 43).</summary>
-public sealed class ModbusDriver : DriverBase, IDiagnosticsProvider, IRegisterInspector, IAddressScanner
+public sealed class ModbusDriver : DriverBase, IDiagnosticsProvider, IRegisterInspector, IAddressScanner, IFrameDecoder
 {
     private readonly ModbusMode _mode;
     private IModbusTransport? _transport;
@@ -128,6 +128,10 @@ public sealed class ModbusDriver : DriverBase, IDiagnosticsProvider, IRegisterIn
         };
         return Task.FromResult(roots);
     }
+
+    /// <summary>Explica os bytes de um pacote do log (TCP: MBAP + PDU · RTU: unit + PDU + CRC).</summary>
+    public DecodedFrame? DecodeFrame(byte[] data, FrameDirection direction) =>
+        data.Length < 2 ? null : ModbusFrameDecoder.Decode(data, direction, rtu: _mode != ModbusMode.Tcp);
 
     private const string AddNote = "\nClique em + para criar uma variável com nome, tipo e ordem dos bytes (ex.: Temperatura = HR:100, Float32).";
 

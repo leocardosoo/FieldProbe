@@ -11,9 +11,13 @@ namespace FieldProbe.Drivers.Mqtt;
 /// Driver MQTT 3.1.1. Descobre tópicos automaticamente, monta a árvore pela hierarquia "/",
 /// monitora por notificação nativa e extrai campos de payload JSON com "tópico|campo.subcampo".
 /// </summary>
-public sealed class MqttDriver : DriverBase, IDiagnosticsProvider
+public sealed class MqttDriver : DriverBase, IDiagnosticsProvider, IFrameDecoder
 {
     public const string Protocol = "MQTT";
+
+    /// <summary>Explica os bytes de um pacote MQTT do log.</summary>
+    public DecodedFrame? DecodeFrame(byte[] data, FrameDirection direction) =>
+        data.Length >= 2 ? MqttFrameDecoder.Decode(data) : null;
 
     private readonly ConcurrentDictionary<string, CachedMessage> _cache = new();
     private readonly List<Subscriber> _subscribers = new();

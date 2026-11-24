@@ -12,8 +12,12 @@ namespace FieldProbe.Drivers.EtherNetIP;
 /// Driver EtherNet/IP (CIP) via libplctag: ControlLogix/CompactLogix, Micro800, MicroLogix, SLC 500, PLC-5 e Omron NJ/NX.
 /// Navega os tags do controlador (ControlLogix/CompactLogix) e identifica o device com ListIdentity.
 /// </summary>
-public sealed class EtherNetIpDriver : DriverBase, IDiagnosticsProvider
+public sealed class EtherNetIpDriver : DriverBase, IDiagnosticsProvider, IFrameDecoder
 {
+    /// <summary>Explica os bytes de um pacote do log (encapsulamento EtherNet/IP · CPF · CIP).</summary>
+    public DecodedFrame? DecodeFrame(byte[] data, FrameDirection direction) =>
+        data.Length >= 24 ? EipFrameDecoder.Decode(data, direction) : null;
+
     public const string Protocol = "EtherNet/IP (Allen-Bradley)";
 
     private readonly Dictionary<string, Tag> _tags = new(StringComparer.OrdinalIgnoreCase);

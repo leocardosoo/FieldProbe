@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using FieldProbe.App.Services;
 using FieldProbe.App.ViewModels;
 
 namespace FieldProbe.App;
@@ -152,6 +153,51 @@ public partial class MainWindow : Window
             _viewModel.AddSelectedNodeCommand.Execute(null);
             e.Handled = true;
         }
+    }
+
+    // ===================== Decodificador de pacotes (log) =====================
+
+    private void LogList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (LogList.SelectedItem is LogEntry entry) OpenDecoder(entry);
+    }
+
+    private void DecodePacket_Click(object sender, RoutedEventArgs e)
+    {
+        if (LogList.SelectedItem is LogEntry entry) OpenDecoder(entry);
+    }
+
+    private void CopyPacketHex_Click(object sender, RoutedEventArgs e)
+    {
+        if (LogList.SelectedItem is LogEntry { Data: { Length: > 0 } data })
+            Clipboard.SetText(string.Join(" ", data.Select(b => b.ToString("X2"))));
+        else if (LogList.SelectedItem is LogEntry { Hex.Length: > 0 } entry)
+            Clipboard.SetText(entry.Hex);
+    }
+
+    private void CopyLogLine_Click(object sender, RoutedEventArgs e)
+    {
+        if (LogList.SelectedItem is LogEntry entry)
+            Clipboard.SetText($"{entry.Time}\t{entry.Source}\t{entry.Kind}\t{entry.Text}");
+    }
+
+    private void OpenDecoder(LogEntry entry)
+    {
+        if (!entry.CanDecode)
+        {
+            DialogService.Info(entry.Data is null && entry.IsTraffic
+                ? "Esta linha não tem bytes brutos para decodificar (a biblioteca do protocolo não expõe o pacote)."
+                : "Só linhas TX/RX com bytes podem ser decodificadas.", "Decodificar pacote");
+            return;
+        }
+
+        var frame = entry.Decoder!.DecodeFrame(entry.Data!, entry.Direction);
+        if (frame is null)
+        {
+            DialogService.Info("O formato deste pacote não foi reconhecido pelo decodificador.", "Decodificar pacote");
+            return;
+        }
+        DialogService.ShowPacket(entry, frame);
     }
 
     /// <summary>Botão "+" de uma pasta da árvore: cria uma variável nela.</summary>

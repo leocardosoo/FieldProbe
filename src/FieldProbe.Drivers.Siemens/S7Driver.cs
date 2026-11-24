@@ -11,7 +11,7 @@ namespace FieldProbe.Drivers.Siemens;
 /// Driver Siemens S7 (S7-200/300/400/1200/1500) via S7netplus.
 /// Para S7-1200/1500: habilitar PUT/GET e usar DBs com acesso "não otimizado".
 /// </summary>
-public sealed class S7Driver : DriverBase, IDiagnosticsProvider, IAddressScanner, IRemovableFolders
+public sealed class S7Driver : DriverBase, IDiagnosticsProvider, IAddressScanner, IRemovableFolders, IFrameDecoder
 {
     public const string Protocol = "Siemens S7";
 
@@ -186,6 +186,10 @@ public sealed class S7Driver : DriverBase, IDiagnosticsProvider, IAddressScanner
         return sizes;
     }
 
+    /// <summary>Explica os bytes de um pacote do log (TPKT · COTP · S7comm).</summary>
+    public DecodedFrame? DecodeFrame(byte[] data, FrameDirection direction) =>
+        data.Length >= 7 && data[0] == 0x03 ? S7FrameDecoder.Decode(data, direction) : null;
+
     // ===================== Remover DB da árvore =====================
 
     public bool CanRemoveFolder(string key) =>
@@ -227,7 +231,8 @@ public sealed class S7Driver : DriverBase, IDiagnosticsProvider, IAddressScanner
 
         OnTrace($"Procurando DBs: {numbers.Count} números ({range})", FrameDirection.Tx);
         await using var system = await S7SystemClient.ConnectAsync(s.Host, s.Port > 0 ? s.Port : 102,
-            s.GetIntOption("Rack", 0), s.GetIntOption("Slot", 1), s.TimeoutMs, ct).ConfigureAwait(false);
+            s.GetIntOption("Rack", 0), s.GetIntOption("Slot", 1), s.TimeoutMs, ct,
+            (direction, data, description) => OnFrame(direction, data, description)).ConfigureAwait(false);
 
         // 1ª etapa: quais DBs existem (1 byte do início de cada um, em lote)
         var readable = new List<int>();

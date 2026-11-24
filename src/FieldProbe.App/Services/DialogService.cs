@@ -19,6 +19,11 @@ public static class DialogService
         return dialog.ShowDialog() == true ? dialog.Result : null;
     }
 
+    public static void ShowPacket(LogEntry entry, DecodedFrame frame)
+    {
+        new PacketDecoderWindow(entry, frame) { Owner = Owner }.Show();
+    }
+
     public static void ShowDiagnostics(string title, IReadOnlyList<DiagnosticItem> items)
     {
         new DiagnosticsWindow(title, items) { Owner = Owner }.Show();
@@ -64,6 +69,9 @@ public static class DialogService
 
     public static MessageBoxResult AskSave(string message) =>
         MessageBox.Show(Owner!, message, "FieldProbe", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+
+    public static void Info(string message, string title = "FieldProbe") =>
+        MessageBox.Show(Owner!, message, title, MessageBoxButton.OK, MessageBoxImage.Information);
 
     public static void Error(string message, string title = "FieldProbe") =>
         MessageBox.Show(Owner!, message, title, MessageBoxButton.OK, MessageBoxImage.Error);

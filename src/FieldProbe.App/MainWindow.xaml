@@ -719,7 +719,8 @@
             <Border Grid.Row="2" Style="{StaticResource Card}" Padding="0">
                 <DockPanel>
                     <DockPanel DockPanel.Dock="Top" Margin="10,6">
-                        <TextBlock Text="Log de comunicação" Style="{StaticResource SectionTitle}" Margin="0,0,16,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Log de comunicação" Style="{StaticResource SectionTitle}" Margin="0,0,16,0" VerticalAlignment="Center"
+                                   ToolTip="Duplo clique numa linha TX/RX para decodificar o pacote byte a byte" />
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                             <Button Style="{StaticResource ToolButton}" Command="{Binding ExportLogCommand}" ToolTip="Exportar o log em CSV">
                                 <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Glyph}" Text="&#xE896;" FontSize="12" /><TextBlock Text="Exportar" /></StackPanel>
@@ -738,7 +739,7 @@
                     </DockPanel>
 
                     <ListView x:Name="LogList" ItemsSource="{Binding LogView}" FontFamily="Consolas" FontSize="12" BorderThickness="0,1,0,0"
-                              BorderBrush="{StaticResource BorderBrush}"
+                              BorderBrush="{StaticResource BorderBrush}" MouseDoubleClick="LogList_MouseDoubleClick"
                               VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
                         <ListView.ItemContainerStyle>
                             <Style TargetType="ListViewItem">
@@ -750,9 +751,19 @@
                                     <DataTrigger Binding="{Binding Kind}" Value="ERRO"><Setter Property="Foreground" Value="#CF222E" /></DataTrigger>
                                     <DataTrigger Binding="{Binding Kind}" Value="AVISO"><Setter Property="Foreground" Value="#9A6700" /></DataTrigger>
                                     <DataTrigger Binding="{Binding Kind}" Value="WRITE"><Setter Property="FontWeight" Value="Bold" /></DataTrigger>
+                                    <DataTrigger Binding="{Binding CanDecode}" Value="True">
+                                        <Setter Property="ToolTip" Value="Duplo clique para decodificar o pacote byte a byte" />
+                                    </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </ListView.ItemContainerStyle>
+                        <ListView.ContextMenu>
+                            <ContextMenu FontFamily="Segoe UI">
+                                <MenuItem Header="Decodificar pacote..." Click="DecodePacket_Click" />
+                                <MenuItem Header="Copiar bytes (hex)" Click="CopyPacketHex_Click" />
+                                <MenuItem Header="Copiar linha" Click="CopyLogLine_Click" />
+                            </ContextMenu>
+                        </ListView.ContextMenu>
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="Hora" Width="95" DisplayMemberBinding="{Binding Time}" />

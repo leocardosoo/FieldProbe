@@ -21,6 +21,7 @@ Também inclui:
 - **Tendência com várias séries**: marque "Gráfico" nos itens; cada série tem uma cor. Tem janela de tempo (1 min a 1 h), escalas independentes, pausa, linhas de alarme e exportação em PNG.
 - **Detector de tipo (Modbus)**: lê os registradores e mostra todas as interpretações (UInt16, Int16, Int32, Float32, Float64, texto, em todas as ordens de byte), marcando as plausíveis.
 - **Log de comunicação** com o tráfego bruto em hex e decodificado (MBAP/RTU, pacotes MQTT, ListIdentity) ou o trace de cada serviço (OPC UA, S7, CIP). Tem filtro e exportação.
+- **Decodificador de pacotes** (duplo clique numa linha TX/RX do log): explica o pacote campo por campo, com os bytes destacados. Cobre Modbus TCP/RTU (MBAP, funções, exceções, CRC), Siemens S7 (TPKT, COTP, S7comm: Setup, Read/Write Var, SZL), EtherNet/IP (encapsulamento, CPF, CIP, Unconnected Send, ListIdentity) e MQTT 3.1.1.
 - **Data Access View** com valor, qualidade, timestamp, latência, ciclo, contadores e último erro.
 - **Gráfico de tendência** do item selecionado.
 - **Gravação em CSV** de todas as leituras (Ctrl+R), com `;` para abrir direto no Excel em português.
@@ -39,7 +40,7 @@ Também inclui:
    Pela linha de comando: `dotnet run --project src/FieldProbe.App`
 2. Para testar sem hardware, suba um dos simuladores da pasta `tools/` e crie a conexão correspondente.
 
-## Simuladores (`tools/`)
+## Simuladores (pasta `tools/`)
 
 | Simulador | Comando | Conexão no FieldProbe |
 |---|---|---|
@@ -47,6 +48,7 @@ Também inclui:
 | MQTT (broker + devices) | `python tools/mqtt_sim.py` (sem dependências) | MQTT · 127.0.0.1:1883 |
 | OPC UA | `pip install asyncua` e depois `python tools/opcua_sim.py` | OPC UA · `opc.tcp://127.0.0.1:4840/fieldprobe/` |
 | Siemens S7 (CPU 1214C) | `python tools/s7_sim.py` (sem dependências) | Siemens S7 · 127.0.0.1:102 · rack 0 / slot 1 |
+| Siemens S7 · linha de montagem (DB1 a DB20, ~200 variáveis) | `python tools/s7_linha_sim.py` (precisa do `s7_sim.py` na mesma pasta) | Siemens S7 · 127.0.0.1:102 · rack 0 / slot 1 |
 | EtherNet/IP (CompactLogix) | `python tools/eip_sim.py` (sem dependências) | EtherNet/IP · 127.0.0.1 · ControlLogix · Path 1,0 |
 | Projeto pronto | abra `samples/demo-simuladores.fpx` e clique em **Conectar todas** | Modbus + MQTT + OPC UA |
 | CLI rápida | `python tools/fieldprobe_cli.py modbus 127.0.0.1 r HR:0` | (terminal) |

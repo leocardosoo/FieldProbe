@@ -10,7 +10,7 @@ using FieldProbe.App.Hmi;
 
 namespace FieldProbe.App.Views;
 
-/// <summary>Editor profissional (desfazer, copiar, alinhar, zoom) e recursos de SCADA (alarmes, faceplate, usuários).</summary>
+/// <summary>Editor profissional (desfazer, copiar, zoom) e recursos de SCADA (faixa de alarmes, faceplate).</summary>
 public partial class HmiWindow
 {
     private const int MaxUndo = 100;
@@ -250,7 +250,6 @@ public partial class HmiWindow
     private void Acknowledge_Click(object sender, RoutedEventArgs e)
     {
         if (_main.AcknowledgeAlarmsCommand.CanExecute(null)) _main.AcknowledgeAlarmsCommand.Execute(null);
-        LogAction("RECONHECER ALARMES", null, string.Empty, "OK");
         UpdateAlarmBanner();
     }
 
@@ -260,41 +259,5 @@ public partial class HmiWindow
     {
         var window = new FaceplateWindow(vm) { Owner = this };
         window.Show();
-    }
-
-    // ===================== Registro das ações do operador =====================
-
-    private static string ActionLogPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FieldProbe", "ihm-acoes.csv");
-
-    /// <summary>Grava quem fez o quê e quando (CSV com ';', abre direto no Excel).</summary>
-    private void LogAction(string action, HmiElementViewModel? vm, string value, string result)
-    {
-        try
-        {
-            var path = ActionLogPath;
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var isNew = !File.Exists(path);
-            static string Csv(string text) => text.Contains(';') || text.Contains('"') ? "\"" + text.Replace("\"", "\"\"") + "\"" : text;
-            var line = string.Join(";", new[]
-            {
-                DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
-                Csv(Environment.UserName),
-                Csv(action),
-                Csv(_screen?.Name ?? string.Empty),
-                Csv(vm is null ? string.Empty : Label(vm)),
-                Csv(vm?.ConnectionName ?? string.Empty),
-                Csv(vm?.Address ?? string.Empty),
-                Csv(value),
-                Csv(result)
-            });
-            var text = (isNew ? "data_hora;usuario;acao;tela;elemento;conexao;endereco;valor;resultado" + Environment.NewLine : string.Empty)
-                       + line + Environment.NewLine;
-            File.AppendAllText(path, text, Encoding.UTF8);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // registro é best-effort: não pode travar a operação
-        }
     }
 }

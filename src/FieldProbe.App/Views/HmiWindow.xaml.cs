@@ -654,14 +654,12 @@ public partial class HmiWindow : Window
             await connection.Driver.WriteAsync(address, raw);
             _main.AddLog(connection.Name, "WRITE", $"IHM · {Label(vm)}: {vm.Address} ← {raw}{(raw != value ? $" (valor de engenharia {value})" : string.Empty)}: OK");
             StatusText.Text = $"{Label(vm)}: {vm.Address} ← {value} ✔";
-            LogAction("ESCRITA", vm, raw, "OK");
             return true;
         }
         catch (Exception ex)
         {
             _main.AddLog(connection.Name, "ERRO", $"IHM · escrita em {vm.Address} falhou: {ex.Message}");
             StatusText.Text = $"Escrita em {vm.Address} falhou: {ex.Message}";
-            LogAction("ESCRITA", vm, raw, "ERRO: " + ex.Message);
             return false;
         }
     }

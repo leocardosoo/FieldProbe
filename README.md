@@ -21,7 +21,7 @@ Também inclui:
 - **Tendência com várias séries**: marque "Gráfico" nos itens; cada série tem uma cor. Tem janela de tempo (1 min a 1 h), escalas independentes, pausa, linhas de alarme e exportação em PNG.
 - **Detector de tipo (Modbus)**: lê os registradores e mostra todas as interpretações (UInt16, Int16, Int32, Float32, Float64, texto, em todas as ordens de byte), marcando as plausíveis.
 - **Log de comunicação** com o tráfego bruto em hex e decodificado (MBAP/RTU, pacotes MQTT, ListIdentity) ou o trace de cada serviço (OPC UA, S7, CIP). Tem filtro e exportação.
-- **Tela de teste (IHM)** (Ferramentas → Tela de teste, ou botão IHM): monte telas livres com lâmpadas, botões (alternar, pulso, ligar, desligar, valor fixo, ir para tela, voltar), mostradores com alarme, campos de setpoint, barras, textos e símbolos animados (motor, bomba, válvula, tanque, esteira, sinaleiro), ligados às variáveis de qualquer conexão. Também tem tubulação com fluxo animado, indicador de estados, medidor de ponteiro, mini tendência, painéis e imagens. Aceita imagem de fundo (tela sinóptica da máquina), visual claro ou industrial e modo tela cheia (F11) para TV/andon. Editor com desfazer/refazer, seleção múltipla, copiar/colar entre telas, zoom e travar. No modo Executar: faixa de alarmes, faceplate ao clicar, piscar em alarme, elementos que aparecem conforme um bit e registro das ações do operador em `%LocalAppData%\FieldProbe\ihm-acoes.csv`. No modo Executar, os valores atualizam ao vivo e os botões escrevem no equipamento (com confirmação opcional). As telas são salvas no projeto `.fpx`.
+- **Tela de teste (IHM)** (Ferramentas → Tela de teste, ou botão IHM): monte telas livres com lâmpadas, botões (alternar, pulso, ligar, desligar, valor fixo, ir para tela, voltar), mostradores com alarme, campos de setpoint, barras, textos e símbolos animados (motor, bomba, válvula, tanque, esteira, sinaleiro), ligados às variáveis de qualquer conexão. Também tem tubulação com fluxo animado, indicador de estados, medidor de ponteiro, mini tendência, painéis e imagens. Aceita imagem de fundo (tela sinóptica da máquina), visual claro ou industrial e modo tela cheia (F11) para TV/andon. Editor com desfazer/refazer, seleção múltipla, copiar/colar entre telas, zoom e travar. No modo Executar: faixa de alarmes, faceplate ao clicar, piscar em alarme e elementos que aparecem conforme um bit. No modo Executar, os valores atualizam ao vivo e os botões escrevem no equipamento (com confirmação opcional). As telas são salvas no projeto `.fpx`.
 - **Decodificador de pacotes** (duplo clique numa linha TX/RX do log): explica o pacote campo por campo, com os bytes destacados. Cobre Modbus TCP/RTU (MBAP, funções, exceções, CRC), Siemens S7 (TPKT, COTP, S7comm: Setup, Read/Write Var, SZL), EtherNet/IP (encapsulamento, CPF, CIP, Unconnected Send, ListIdentity) e MQTT 3.1.1.
 - **Data Access View** com valor, qualidade, timestamp, latência, ciclo, contadores e último erro.
 - **Gráfico de tendência** do item selecionado.
@@ -107,15 +107,3 @@ FieldProbe.sln
 .\build\publish.ps1 -Version 1.0.0          # gera artifacts\publish (não exige .NET na máquina do cliente)
 iscc build\installer.iss /DAppVersion=1.0.0 # gera artifacts\installer\FieldProbe-Setup-1.0.0.exe
 ```
-
-## Roadmap sugerido
-
-- [ ] Licenciamento (chave de ativação / trial) e EULA
-- [ ] Assinatura de código (certificado code signing), para evitar o alerta do SmartScreen
-- [ ] Sequências de teste (escrever → aguardar → verificar) com relatório OK/NOK em PDF
-- [ ] Modo simulador/escravo (Modbus server, broker MQTT embutido)
-- [x] Scanner de rede e relatório de auditoria
-- [ ] OPC UA: escrita de arrays, métodos, eventos/alarmes e certificados de usuário
-- [ ] MQTT 5 e Sparkplug B
-- [ ] BACnet/IP, DNP3, IEC 60870-5-104, Omron FINS, Mitsubishi MC Protocol
-- [ ] Tema escuro e idioma inglês

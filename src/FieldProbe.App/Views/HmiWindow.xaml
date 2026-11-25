@@ -1,12 +1,14 @@
 <Window x:Class="FieldProbe.App.Views.HmiWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:hmi="clr-namespace:FieldProbe.App.Hmi"
         Title="FieldProbe · Tela de teste (IHM)" Width="1480" Height="900" MinWidth="900" MinHeight="560"
         WindowStartupLocation="CenterScreen" FontFamily="Segoe UI" FontSize="12.5"
         Background="{StaticResource WindowBackground}" PreviewKeyDown="Window_PreviewKeyDown">
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="B2V" />
+        <hmi:InverseBoolToVisibilityConverter x:Key="InverseB2V" />
 
         <Style x:Key="PropLabel" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
@@ -63,8 +65,17 @@
         </Border>
 
         <!-- ===== Configuração da tela (modo edição) ===== -->
-        <Border x:Name="ScreenSettingsBar" DockPanel.Dock="Top" Background="#F6F8FA" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="12,6">
-            <StackPanel Orientation="Horizontal">
+        <Border x:Name="ScreenSettingsBar" DockPanel.Dock="Top" Background="#F6F8FA" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="12,4">
+            <WrapPanel>
+                <!-- Desfazer / copiar / alinhar / zoom -->
+                <Button x:Name="UndoButton" Content="↶" FontSize="15" Padding="8,1" Margin="0,2,2,2" Click="Undo_Click" ToolTip="Desfazer (Ctrl+Z)" />
+                <Button x:Name="RedoButton" Content="↷" FontSize="15" Padding="8,1" Margin="0,2,10,2" Click="Redo_Click" ToolTip="Refazer (Ctrl+Y)" />
+                <Button Content="Copiar" Margin="0,2,2,2" Click="Copy_Click" ToolTip="Copiar os elementos selecionados (Ctrl+C)" />
+                <Button Content="Colar" Margin="0,2,10,2" Click="Paste_Click" ToolTip="Colar nesta tela (Ctrl+V). Funciona entre telas" />
+                <TextBlock Text="Zoom" VerticalAlignment="Center" Margin="4,0,6,0" Foreground="{StaticResource MutedBrush}" />
+                <ComboBox x:Name="ZoomBox" Width="78" Margin="0,2,0,2" SelectionChanged="ZoomBox_SelectionChanged" ToolTip="Ctrl + roda do mouse também dá zoom" />
+                <Rectangle Width="1" Fill="{StaticResource BorderBrush}" Margin="14,4" />
+                <StackPanel Orientation="Horizontal" Margin="0,2">
                 <TextBlock Text="Visual" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{StaticResource MutedBrush}" />
                 <ComboBox x:Name="ThemeBox" Width="150" SelectionChanged="ThemeBox_SelectionChanged" DisplayMemberPath="Value" SelectedValuePath="Key" />
                 <Rectangle Width="1" Fill="{StaticResource BorderBrush}" Margin="14,2" />
@@ -78,7 +89,8 @@
                 <TextBlock Text="×" VerticalAlignment="Center" Margin="4,0" />
                 <TextBox x:Name="ScreenHeightBox" Width="56" />
                 <Button Content="Aplicar" Margin="6,0,0,0" Click="ApplySize_Click" ToolTip="Ex.: 1280×720 (HD), 1920×1080 (Full HD), 1024×600 (painel 7&quot;)" />
-            </StackPanel>
+                </StackPanel>
+            </WrapPanel>
         </Border>
 
         <!-- ===== Barra de status ===== -->
@@ -127,8 +139,27 @@
                 <Button Style="{StaticResource ToolboxButton}" Tag="Sinaleiro" Click="AddElement_Click" ToolTip="Torre de luz: verde, amarelo e vermelho (um bit para cada)">
                     <StackPanel Orientation="Horizontal"><TextBlock Text="▮" FontSize="13" Foreground="#CF222E" Margin="0,0,8,0" /><TextBlock Text="Sinaleiro" /></StackPanel>
                 </Button>
+                <TextBlock Text="Supervisão" Style="{StaticResource SectionTitle}" Margin="0,10,0,8" />
+                <Button Style="{StaticResource ToolboxButton}" Tag="Tubo" Click="AddElement_Click" ToolTip="Trecho de cano: o fluido anda quando o bit está ligado. Junte trechos para fazer curvas">
+                    <StackPanel Orientation="Horizontal"><Border Width="18" Height="6" Background="#8C959F" Margin="0,0,8,0" /><TextBlock Text="Tubulação" /></StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolboxButton}" Tag="Estados" Click="AddElement_Click" ToolTip="Traduz números em texto e cor: 0 = Parada, 1 = Pronta, 2 = Em ciclo, 3 = Falha">
+                    <StackPanel Orientation="Horizontal"><Border Width="18" Height="10" Background="#1A7F37" CornerRadius="2" Margin="0,0,8,0" /><TextBlock Text="Estados" /></StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolboxButton}" Tag="Medidor" Click="AddElement_Click" ToolTip="Mostrador analógico de ponteiro">
+                    <StackPanel Orientation="Horizontal"><TextBlock Text="◠" FontSize="13" Margin="0,0,8,0" /><TextBlock Text="Medidor" /></StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolboxButton}" Tag="Tendencia" Click="AddElement_Click" ToolTip="Gráfico dos últimos valores">
+                    <StackPanel Orientation="Horizontal"><TextBlock Text="〽" FontSize="13" Margin="0,0,8,0" /><TextBlock Text="Tendência" /></StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolboxButton}" Tag="Painel" Click="AddElement_Click" ToolTip="Retângulo para agrupar uma área (ex.: Estação 20). Use 'Enviar para trás'">
+                    <StackPanel Orientation="Horizontal"><Border Width="18" Height="12" BorderBrush="#57606A" BorderThickness="1" Background="#EEF1F5" Margin="0,0,8,0" /><TextBlock Text="Painel" /></StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolboxButton}" Tag="Imagem" Click="AddElement_Click" ToolTip="Logo, ícone ou foto (PNG/JPG), guardada no projeto">
+                    <StackPanel Orientation="Horizontal"><TextBlock Text="🖼" FontSize="12" Margin="0,0,8,0" /><TextBlock Text="Imagem" /></StackPanel>
+                </Button>
                 <TextBlock Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,12,0,0" FontSize="11.5"
-                           Text="Clique para adicionar. Arraste para mover e use o canto azul para mudar o tamanho. Del apaga · Ctrl+D duplica · setas movem 1 px." />
+                           Text="Clique para adicionar. Arraste para mover; arraste no fundo para selecionar vários; Ctrl+clique soma à seleção. Canto azul = tamanho. Ctrl+Z desfaz · Ctrl+C/V copia · Ctrl+D duplica · Del apaga · setas movem 1 px (Shift: 10)." />
             </StackPanel></ScrollViewer>
         </Border>
 
@@ -137,6 +168,17 @@
             <Grid>
                 <TextBlock x:Name="NoSelectionText" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="16"
                            Text="Selecione um elemento na tela para editar o texto, a variável ligada e a aparência." />
+                <StackPanel x:Name="MultiSelectPanel" Margin="16" Visibility="Collapsed">
+                    <TextBlock x:Name="MultiSelectText" Style="{StaticResource SectionTitle}" FontSize="14" />
+                    <TextBlock Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0"
+                               Text="Arraste qualquer um para mover todos. Use a barra de cima para alinhar e distribuir, ou Del / Ctrl+C / Ctrl+D." />
+                    <WrapPanel Margin="0,12,0,0">
+                        <Button Content="Duplicar" Click="Duplicate_Click" Margin="0,0,6,6" />
+                        <Button Content="Travar" Click="LockAll_Click" Margin="0,0,6,6" />
+                        <Button Content="Destravar" Click="UnlockAll_Click" Margin="0,0,6,6" />
+                        <Button Content="Excluir" Click="Delete_Click" Margin="0,0,0,6" Foreground="#CF222E" />
+                    </WrapPanel>
+                </StackPanel>
                 <ScrollViewer x:Name="PropertiesPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
                     <StackPanel Margin="14,12,14,16">
                         <TextBlock Text="{Binding KindName}" Style="{StaticResource SectionTitle}" FontSize="14" />
@@ -204,6 +246,30 @@
                                     <TextBox Text="{Binding Length}" ToolTip="Strings: caracteres (S7) ou registradores (Modbus)" />
                                 </StackPanel>
                             </Grid>
+                        </StackPanel>
+
+                        <!-- Tubulação -->
+                        <StackPanel Visibility="{Binding ShowFlowReverse, Converter={StaticResource B2V}}">
+                            <TextBlock Text="Tubulação" Style="{StaticResource PropGroup}" />
+                            <CheckBox Content="Fluxo no sentido contrário" IsChecked="{Binding FlowReverse}" Margin="0,6,0,0"
+                                      ToolTip="Normal: esquerda → direita (horizontal) ou cima → baixo (vertical)" />
+                            <TextBlock Style="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
+                                       Text="Ligue no bit da bomba/válvula: com o bit ligado o fluido anda. Para curvas, junte um trecho horizontal e um vertical." />
+                        </StackPanel>
+
+                        <!-- Estados -->
+                        <StackPanel Visibility="{Binding ShowStates, Converter={StaticResource B2V}}">
+                            <TextBlock Text="Estados" Style="{StaticResource PropGroup}" />
+                            <TextBlock Style="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,4"
+                                       Text="Uma linha por estado: valor = texto = cor. Cores: Verde, Vermelho, Amarelo, Laranja, Azul, Roxo, Cinza, Preto, Branco." />
+                            <TextBox Text="{Binding States}" AcceptsReturn="True" TextWrapping="NoWrap" Height="110" FontFamily="Consolas"
+                                     VerticalScrollBarVisibility="Auto" />
+                        </StackPanel>
+
+                        <!-- Imagem -->
+                        <StackPanel Visibility="{Binding ShowImagePicker, Converter={StaticResource B2V}}">
+                            <TextBlock Text="Imagem" Style="{StaticResource PropGroup}" />
+                            <Button Content="Escolher imagem..." HorizontalAlignment="Left" Margin="0,6,0,0" Click="ElementImage_Click" />
                         </StackPanel>
 
                         <!-- Botão -->
@@ -288,6 +354,36 @@
                             </Grid>
                         </StackPanel>
 
+                        <!-- Comportamento -->
+                        <TextBlock Text="Comportamento" Style="{StaticResource PropGroup}" />
+                        <CheckBox Content="Abrir detalhes ao clicar (faceplate)" IsChecked="{Binding Faceplate}" Margin="0,6,0,0"
+                                  Visibility="{Binding ShowFaceplateOption, Converter={StaticResource B2V}}"
+                                  ToolTip="No modo Executar, clicar abre uma janela com valor, qualidade, variável e erro (só leitura)" />
+                        <TextBlock Text="Piscar" Style="{StaticResource PropLabel}" />
+                        <ComboBox x:Name="BlinkBox" DisplayMemberPath="Value" SelectedValuePath="Key" SelectedValue="{Binding Blink}" />
+                        <TextBlock Text="Mostrar" Style="{StaticResource PropLabel}" />
+                        <ComboBox x:Name="VisibleWhenBox" DisplayMemberPath="Value" SelectedValuePath="Key" SelectedValue="{Binding VisibleWhen}"
+                                  ToolTip="No modo Executar, o elemento só aparece quando a condição é atendida (ex.: mensagem de falha)" />
+                        <StackPanel>
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding VisibleWhen}" Value="Sempre">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Text="Bit da condição" Style="{StaticResource PropLabel}" />
+                            <TextBox Text="{Binding VisibilityAddress}" FontFamily="Consolas" ToolTip="Ex.: DB16.DBX0.4 · usa a mesma conexão do elemento" />
+                            <StackPanel Visibility="{Binding HasBinding, Converter={StaticResource InverseB2V}}">
+                                <TextBlock Text="Conexão do bit" Style="{StaticResource PropLabel}" />
+                                <ComboBox x:Name="VisibilityConnectionBox" SelectedItem="{Binding ConnectionName}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <CheckBox Content="Travar posição e tamanho" IsChecked="{Binding Locked}" Margin="0,10,0,0"
+                                  ToolTip="Evita mover sem querer (ex.: painel de fundo, imagem)" />
+
                         <!-- Posição -->
                         <TextBlock Text="Posição e tamanho" Style="{StaticResource PropGroup}" />
                         <UniformGrid Columns="4" Margin="0,6,0,0">
@@ -300,6 +396,7 @@
                         <WrapPanel Margin="0,16,0,0">
                             <Button Content="Duplicar" Click="Duplicate_Click" Margin="0,0,6,6" />
                             <Button Content="Trazer à frente" Click="BringFront_Click" Margin="0,0,6,6" />
+                            <Button Content="Enviar para trás" Click="SendBack_Click" Margin="0,0,6,6" />
                             <Button Content="Excluir" Click="Delete_Click" Margin="0,0,0,6" Foreground="#CF222E" />
                         </WrapPanel>
                     </StackPanel>
@@ -311,7 +408,10 @@
         <Grid>
         <ScrollViewer x:Name="SurfaceScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="16">
           <Viewbox x:Name="FitBox" Stretch="None" HorizontalAlignment="Left" VerticalAlignment="Top">
-            <StackPanel>
+            <StackPanel x:Name="Stage">
+              <StackPanel.LayoutTransform>
+                  <ScaleTransform x:Name="ZoomTransform" ScaleX="1" ScaleY="1" />
+              </StackPanel.LayoutTransform>
               <!-- Cabeçalho da tela no modo Executar (nome + relógio), como num SCADA -->
               <Border x:Name="RunHeader" Visibility="Collapsed" Padding="14,8" Background="#1E2D3D">
                   <DockPanel>
@@ -320,7 +420,8 @@
                   </DockPanel>
               </Border>
               <Border x:Name="SurfaceFrame" BorderBrush="#D0D7DE" BorderThickness="1">
-                <Grid x:Name="Surface" Background="White" MouseLeftButtonDown="Surface_MouseLeftButtonDown" ClipToBounds="True">
+                <Grid x:Name="Surface" Background="White" ClipToBounds="True"
+                      MouseLeftButtonDown="Surface_MouseLeftButtonDown" MouseMove="Surface_MouseMove" MouseLeftButtonUp="Surface_MouseLeftButtonUp">
                     <!-- imagem de fundo (sinóptico) -->
                     <Image x:Name="BgImage" IsHitTestVisible="False" Stretch="Uniform" />
                     <!-- grade de pontos (só na edição) -->
@@ -360,16 +461,46 @@
                         </ItemsControl.ItemContainerStyle>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Grid Width="{Binding Width}" Height="{Binding Height}" ToolTip="{Binding StatusTip}">
+                                <Grid x:Name="Root" Width="{Binding Width}" Height="{Binding Height}" ToolTip="{Binding StatusTip}"
+                                      MouseLeftButtonUp="Element_RunClick">
                                     <Grid.Style>
                                         <Style TargetType="Grid">
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsWinCC}" Value="True">
                                                     <Setter Property="TextElement.FontFamily" Value="Arial" />
                                                 </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsHiddenByCondition}" Value="True">
+                                                    <Setter Property="Visibility" Value="Hidden" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsClickable}" Value="True">
+                                                    <Setter Property="Cursor" Value="Hand" />
+                                                </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </Grid.Style>
+
+                                    <!-- Painel / retângulo (fica atrás do resto quando enviado para trás) -->
+                                    <Border Visibility="{Binding IsPanel, Converter={StaticResource B2V}}" Background="{Binding PanelBrush}"
+                                            BorderBrush="#57606A" BorderThickness="1.5" CornerRadius="4" Padding="10,6">
+                                        <TextBlock Text="{Binding Text}" FontSize="{Binding FontSize}" FontWeight="SemiBold" Foreground="#24292F"
+                                                   HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                    </Border>
+
+                                    <!-- Imagem -->
+                                    <Image Visibility="{Binding IsImage, Converter={StaticResource B2V}}" Source="{Binding ImageSource}" Stretch="Uniform" />
+
+                                    <!-- Tubulação: trecho horizontal ou vertical, fluido animado -->
+                                    <Border Visibility="{Binding IsPipe, Converter={StaticResource B2V}}" Background="#C9CED4" BorderBrush="#57606A"
+                                            BorderThickness="1.5" CornerRadius="3" ClipToBounds="True">
+                                        <Grid>
+                                            <Line x:Name="FlowH" Visibility="{Binding IsHorizontalBar, Converter={StaticResource B2V}}"
+                                                  X1="0" Y1="0" X2="{Binding Width}" Y2="0" VerticalAlignment="Center"
+                                                  Stroke="{Binding FlowBrush}" StrokeThickness="{Binding PipeThickness}" StrokeDashArray="2 1" />
+                                            <Line x:Name="FlowV" Visibility="{Binding IsVerticalBar, Converter={StaticResource B2V}}"
+                                                  X1="0" Y1="0" X2="0" Y2="{Binding Height}" HorizontalAlignment="Center"
+                                                  Stroke="{Binding FlowBrush}" StrokeThickness="{Binding PipeThickness}" StrokeDashArray="2 1" />
+                                        </Grid>
+                                    </Border>
 
                                     <!-- Cartão (lâmpada, mostrador, setpoint, barra) -->
                                     <Border Visibility="{Binding HasCard, Converter={StaticResource B2V}}" BorderThickness="1" Padding="10,8">
@@ -461,6 +592,52 @@
                                                         </Style>
                                                     </ProgressBar.Style>
                                                 </ProgressBar>
+                                            </DockPanel>
+
+                                            <!-- Indicador de estados -->
+                                            <DockPanel Visibility="{Binding IsStates, Converter={StaticResource B2V}}">
+                                                <TextBlock DockPanel.Dock="Top" Text="{Binding Text}" FontSize="{Binding FontSize}" Foreground="#57606A" TextTrimming="CharacterEllipsis" />
+                                                <Border Background="{Binding StateBrush}" CornerRadius="4" Margin="0,6,0,0" Padding="8,4">
+                                                    <Viewbox StretchDirection="DownOnly">
+                                                        <TextBlock Text="{Binding StateText}" Foreground="White" FontWeight="Bold" FontSize="{Binding BigFontSize}" />
+                                                    </Viewbox>
+                                                </Border>
+                                            </DockPanel>
+
+                                            <!-- Medidor de ponteiro -->
+                                            <DockPanel Visibility="{Binding IsGauge, Converter={StaticResource B2V}}">
+                                                <TextBlock DockPanel.Dock="Top" Text="{Binding Text}" FontSize="{Binding FontSize}" Foreground="#57606A"
+                                                           TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" />
+                                                <Viewbox>
+                                                    <Canvas Width="120" Height="112">
+                                                        <Path Data="M 24.6,95.4 A 50,50 0 1 1 95.4,95.4" Stroke="#D0D7DE" StrokeThickness="10" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                                        <Line X1="60" Y1="60" X2="60" Y2="18" Stroke="{Binding BarBrush}" StrokeThickness="4" StrokeEndLineCap="Triangle">
+                                                            <Line.RenderTransform>
+                                                                <RotateTransform Angle="{Binding NeedleAngle}" CenterX="60" CenterY="60" />
+                                                            </Line.RenderTransform>
+                                                        </Line>
+                                                        <Ellipse Canvas.Left="53" Canvas.Top="53" Width="14" Height="14" Fill="#24292F" />
+                                                        <TextBlock Canvas.Left="14" Canvas.Top="100" Text="{Binding MinText}" FontSize="9" Foreground="#8C959F" />
+                                                        <TextBlock Canvas.Left="84" Canvas.Top="100" Width="24" TextAlignment="Right" Text="{Binding MaxText}" FontSize="9" Foreground="#8C959F" />
+                                                        <TextBlock Canvas.Left="0" Canvas.Top="74" Width="120" TextAlignment="Center" FontWeight="Bold" FontSize="12"
+                                                                   Foreground="{Binding ValueForeground}">
+                                                            <Run Text="{Binding DisplayText, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding UnitText, Mode=OneWay}" />
+                                                        </TextBlock>
+                                                    </Canvas>
+                                                </Viewbox>
+                                            </DockPanel>
+
+                                            <!-- Mini tendência -->
+                                            <DockPanel Visibility="{Binding IsTrend, Converter={StaticResource B2V}}">
+                                                <DockPanel DockPanel.Dock="Top">
+                                                    <TextBlock DockPanel.Dock="Right" FontWeight="Bold" Foreground="{Binding ValueForeground}">
+                                                        <Run Text="{Binding DisplayText, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding UnitText, Mode=OneWay}" />
+                                                    </TextBlock>
+                                                    <TextBlock Text="{Binding Text}" FontSize="{Binding FontSize}" Foreground="#57606A" TextTrimming="CharacterEllipsis" />
+                                                </DockPanel>
+                                                <Border Margin="0,6,0,0" BorderBrush="#D0D7DE" BorderThickness="0,0,0,1" ClipToBounds="True">
+                                                    <Polyline Points="{Binding TrendPoints}" Stroke="{Binding TrendBrush}" StrokeThickness="2" StrokeLineJoin="Round" />
+                                                </Border>
                                             </DockPanel>
                                         </Grid>
                                     </Border>
@@ -577,9 +754,11 @@
                                         </Rectangle>
                                         <TextBlock Text="{Binding BindingText}" FontSize="10" Foreground="#8C959F" FontFamily="Consolas"
                                                    HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="4,0,0,-16" IsHitTestVisible="False" />
+                                        <TextBlock Text="🔒" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-14,0,0"
+                                                   Visibility="{Binding Locked, Converter={StaticResource B2V}}" IsHitTestVisible="False" />
                                         <Thumb Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-5,-5"
-                                               Cursor="SizeNWSE" DragDelta="Resize_DragDelta"
-                                               Visibility="{Binding IsSelected, Converter={StaticResource B2V}}">
+                                               Cursor="SizeNWSE" DragStarted="Resize_DragStarted" DragDelta="Resize_DragDelta"
+                                               Visibility="{Binding CanResize, Converter={StaticResource B2V}}">
                                             <Thumb.Template>
                                                 <ControlTemplate TargetType="Thumb">
                                                     <Border Background="#0F6CBD" BorderBrush="White" BorderThickness="1.5" CornerRadius="2" />
@@ -589,6 +768,47 @@
                                     </Grid>
                                 </Grid>
                                 <DataTemplate.Triggers>
+                                    <!-- Piscar (em alarme ou ligado) -->
+                                    <DataTrigger Binding="{Binding IsBlinking}" Value="True">
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard Name="BlinkAnimation">
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetName="Root" Storyboard.TargetProperty="Opacity"
+                                                                     From="1" To="0.2" Duration="0:0:0.5" AutoReverse="True" RepeatBehavior="Forever" />
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                        <DataTrigger.ExitActions>
+                                            <StopStoryboard BeginStoryboardName="BlinkAnimation" />
+                                        </DataTrigger.ExitActions>
+                                    </DataTrigger>
+                                    <!-- Fluido andando no tubo -->
+                                    <DataTrigger Binding="{Binding IsFlowingForward}" Value="True">
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard Name="FlowForward">
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetName="FlowH" Storyboard.TargetProperty="StrokeDashOffset" From="0" To="-3" Duration="0:0:0.5" RepeatBehavior="Forever" />
+                                                    <DoubleAnimation Storyboard.TargetName="FlowV" Storyboard.TargetProperty="StrokeDashOffset" From="0" To="-3" Duration="0:0:0.5" RepeatBehavior="Forever" />
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                        <DataTrigger.ExitActions>
+                                            <StopStoryboard BeginStoryboardName="FlowForward" />
+                                        </DataTrigger.ExitActions>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsFlowingReverse}" Value="True">
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard Name="FlowReverse">
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetName="FlowH" Storyboard.TargetProperty="StrokeDashOffset" From="0" To="3" Duration="0:0:0.5" RepeatBehavior="Forever" />
+                                                    <DoubleAnimation Storyboard.TargetName="FlowV" Storyboard.TargetProperty="StrokeDashOffset" From="0" To="3" Duration="0:0:0.5" RepeatBehavior="Forever" />
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                        <DataTrigger.ExitActions>
+                                            <StopStoryboard BeginStoryboardName="FlowReverse" />
+                                        </DataTrigger.ExitActions>
+                                    </DataTrigger>
                                     <!-- Motor/bomba giram e a esteira anda quando ligados (modo Executar) -->
                                     <DataTrigger Binding="{Binding IsAnimating}" Value="True">
                                         <DataTrigger.EnterActions>
@@ -611,7 +831,18 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <!-- retângulo de seleção (arrastar no fundo) -->
+                    <Canvas IsHitTestVisible="False">
+                        <Rectangle x:Name="SelectionRect" Visibility="Collapsed" Stroke="#0F6CBD" StrokeThickness="1" StrokeDashArray="4 2" Fill="#220F6CBD" />
+                    </Canvas>
                 </Grid>
+              </Border>
+              <!-- Faixa de alarmes (modo Executar) -->
+              <Border x:Name="AlarmBanner" Visibility="Collapsed" Padding="12,6" Background="#1A7F37">
+                  <DockPanel>
+                      <Button x:Name="AckButton" DockPanel.Dock="Right" Content="Reconhecer" Padding="10,2" Click="Acknowledge_Click" />
+                      <TextBlock x:Name="AlarmBannerText" Foreground="White" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+                  </DockPanel>
               </Border>
             </StackPanel>
           </Viewbox>

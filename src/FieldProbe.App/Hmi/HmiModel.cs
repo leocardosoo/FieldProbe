@@ -18,7 +18,31 @@ public enum HmiKind
     Valvula,
     Tanque,
     Esteira,
-    Sinaleiro
+    Sinaleiro,
+
+    // Elementos de supervisão
+    Tubo,
+    Estados,
+    Medidor,
+    Tendencia,
+    Painel,
+    Imagem
+}
+
+/// <summary>Quando o elemento pisca no modo Executar.</summary>
+public enum HmiBlink
+{
+    Nunca,
+    EmAlarme,
+    QuandoLigado
+}
+
+/// <summary>Condição para o elemento aparecer no modo Executar.</summary>
+public enum HmiVisibleWhen
+{
+    Sempre,
+    BitLigado,
+    BitDesligado
 }
 
 /// <summary>Visual da tela.</summary>
@@ -123,6 +147,27 @@ public sealed class HmiElementData
     public string OffColor { get; set; } = "Cinza";
     public HmiButtonMode ButtonMode { get; set; } = HmiButtonMode.Alternar;
     public string WriteValue { get; set; } = "1";
+
+    // Elementos de supervisão
+    /// <summary>Tubulação: fluxo no sentido contrário (direita→esquerda / baixo→cima).</summary>
+    public bool FlowReverse { get; set; }
+
+    /// <summary>Indicador de estados: uma linha por estado, "valor = texto = cor" (ex.: "3 = Falha = Vermelho").</summary>
+    public string States { get; set; } = "0 = Parada = Cinza\n1 = Pronta = Azul\n2 = Em ciclo = Verde\n3 = Falha = Vermelho";
+
+    /// <summary>Imagem do elemento "Imagem" (PNG/JPG em Base64, guardada no projeto).</summary>
+    public string? ImageData { get; set; }
+
+    // Comportamento
+    public bool Locked { get; set; }
+    public HmiBlink Blink { get; set; } = HmiBlink.Nunca;
+    public HmiVisibleWhen VisibleWhen { get; set; } = HmiVisibleWhen.Sempre;
+
+    /// <summary>Bit que controla a visibilidade (na mesma conexão do elemento).</summary>
+    public string VisibilityAddress { get; set; } = string.Empty;
+
+    /// <summary>Clique no modo Executar abre a janela de detalhes (faceplate).</summary>
+    public bool Faceplate { get; set; }
 
     public HmiElementData Clone() => (HmiElementData)MemberwiseClone();
 }

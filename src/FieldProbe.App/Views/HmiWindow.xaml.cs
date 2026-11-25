@@ -75,9 +75,29 @@ public partial class HmiWindow : Window
             [HmiTheme.WinCC] = "Industrial"
         };
         ImageFitBox.ItemsSource = Enum.GetValues<HmiImageFit>();
+        BlinkBox.ItemsSource = new Dictionary<HmiBlink, string>
+        {
+            [HmiBlink.Nunca] = "Nunca",
+            [HmiBlink.EmAlarme] = "Quando estiver em alarme",
+            [HmiBlink.QuandoLigado] = "Quando estiver ligado"
+        };
+        VisibleWhenBox.ItemsSource = new Dictionary<HmiVisibleWhen, string>
+        {
+            [HmiVisibleWhen.Sempre] = "Sempre",
+            [HmiVisibleWhen.BitLigado] = "Só quando um bit estiver ligado",
+            [HmiVisibleWhen.BitDesligado] = "Só quando um bit estiver desligado"
+        };
+        ZoomBox.ItemsSource = new[] { 50, 75, 100, 125, 150, 200 }.Select(z => new ZoomOption(z)).ToList();
+        ZoomBox.SelectedIndex = 2;
+        SurfaceScroll.PreviewMouseWheel += SurfaceScroll_PreviewMouseWheel;
 
         _attachTimer.Tick += (_, _) => AttachSubscriptions();
-        _clock.Tick += (_, _) => ClockText.Text = DateTime.Now.ToString("dd/MM/yyyy  HH:mm:ss");
+        _undoTimer.Tick += (_, _) => FlushUndo();
+        _clock.Tick += (_, _) =>
+        {
+            ClockText.Text = DateTime.Now.ToString("dd/MM/yyyy  HH:mm:ss");
+            UpdateAlarmBanner();
+        };
         Activated += (_, _) => RefreshSources();
         Closed += (_, _) =>
         {
@@ -110,7 +130,10 @@ public partial class HmiWindow : Window
         foreach (var name in _elements.Select(x => x.ConnectionName).Where(n => n.Length > 0 && !names.Contains(n)).Distinct().ToList())
             names.Add(name); // conexão renomeada/removida: o elemento não perde o vínculo
         if (ConnectionBox.ItemsSource is not List<string> current || !current.SequenceEqual(names))
+        {
             ConnectionBox.ItemsSource = names;
+            VisibilityConnectionBox.ItemsSource = names;
+        }
 
         var screens = _main.HmiScreens.Select(x => x.Name).ToList();
         foreach (var target in _elements.Select(x => x.TargetScreen).Where(n => n.Length > 0 && !screens.Contains(n)).Distinct().ToList())
@@ -147,6 +170,7 @@ public partial class HmiWindow : Window
         ApplyTheme();
         ApplyBackground();
         Select(null);
+        ResetUndo();
         if (_running) StartRuntime();
         UpdateStatus();
     }
@@ -154,7 +178,7 @@ public partial class HmiWindow : Window
     private HmiElementViewModel Wrap(HmiElementData data)
     {
         var vm = new HmiElementViewModel(data) { IsEditMode = !_running, IsWinCC = _screen?.Theme == HmiTheme.WinCC };
-        vm.Changed += (_, _) => _main.MarkDirty();
+        vm.Changed += (_, _) => OnElementChanged();
         return vm;
     }
 
@@ -420,7 +444,12 @@ public partial class HmiWindow : Window
 
     // ===================== Modo editar / executar =====================
 
-    private void ModeButton_Changed(object sender, RoutedEventArgs e) => SetRunning(ModeButton.IsChecked == true);
+    private void ModeButton_Changed(object sender, RoutedEventArgs e)
+    {
+        var running = ModeButton.IsChecked == true;
+        FlushUndo();
+        SetRunning(running);
+    }
 
     private void SetRunning(bool running)
     {
@@ -432,6 +461,9 @@ public partial class HmiWindow : Window
         ScreenSettingsBar.Visibility = running ? Visibility.Collapsed : Visibility.Visible;
         GridDots.Visibility = running ? Visibility.Collapsed : Visibility.Visible;
         RunHeader.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
+        AlarmBanner.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
+        ApplyZoom(running ? 1 : _editZoom);
+        if (running) UpdateAlarmBanner();
         FullscreenButton.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
         ScreensBox.IsEnabled = true;
         if (running)
@@ -494,11 +526,11 @@ public partial class HmiWindow : Window
             vm.ResetLive(connection is null ? "Conexão não existe mais no projeto" : "Conexão fechada");
         }
 
-        foreach (var vm in _elements.Where(e => e.HasBinding && !_subscriptions.ContainsKey(e)))
+        foreach (var vm in _elements.Where(e => (e.HasBinding || e.HasVisibilityCondition) && !_subscriptions.ContainsKey(e)))
         {
-            if (!vm.IsBound)
+            if (!vm.NeedsReading)
             {
-                vm.ResetLive("Sem variável ligada (modo Editar → propriedades)");
+                if (vm.HasBinding) vm.ResetLive("Sem variável ligada (modo Editar → propriedades)");
                 continue;
             }
             var connection = FindConnection(vm);
@@ -512,18 +544,14 @@ public partial class HmiWindow : Window
                 vm.ResetLive($"Conexão '{connection.Name}' fechada: conecte na janela principal");
                 continue;
             }
-            // Ligado a um item: usa a leitura do próprio item (sem tráfego extra), com escala, unidade e alarme dele
-            if (vm.IsLinked && FindItem(vm) is { } item)
-            {
-                _subscriptions[vm] = new List<IDisposable> { new ItemLink(item, vm) };
-                continue;
-            }
-
             try
             {
                 var target = vm;
                 var list = new List<IDisposable>();
-                foreach (var (index, address) in vm.ReadAddresses())
+                // Ligado a um item: usa a leitura do próprio item (sem tráfego extra), com escala, unidade e alarme dele
+                var linkedItem = vm.IsLinked ? FindItem(vm) : null;
+                if (linkedItem is not null) list.Add(new ItemLink(linkedItem, vm));
+                foreach (var (index, address) in vm.ReadAddresses(includeMain: linkedItem is null))
                 {
                     var i = index;
                     list.Add(connection.Driver.Subscribe(address, 500, value => Dispatcher.InvokeAsync(() => target.Apply(value, i))));
@@ -626,12 +654,14 @@ public partial class HmiWindow : Window
             await connection.Driver.WriteAsync(address, raw);
             _main.AddLog(connection.Name, "WRITE", $"IHM · {Label(vm)}: {vm.Address} ← {raw}{(raw != value ? $" (valor de engenharia {value})" : string.Empty)}: OK");
             StatusText.Text = $"{Label(vm)}: {vm.Address} ← {value} ✔";
+            LogAction("ESCRITA", vm, raw, "OK");
             return true;
         }
         catch (Exception ex)
         {
             _main.AddLog(connection.Name, "ERRO", $"IHM · escrita em {vm.Address} falhou: {ex.Message}");
             StatusText.Text = $"Escrita em {vm.Address} falhou: {ex.Message}";
+            LogAction("ESCRITA", vm, raw, "ERRO: " + ex.Message);
             return false;
         }
     }
@@ -721,6 +751,11 @@ public partial class HmiWindow : Window
 
     // ===================== Edição =====================
 
+    private readonly List<HmiElementViewModel> _selection = new();
+    private readonly Dictionary<HmiElementViewModel, Point> _dragOrigins = new();
+    private bool _banding;
+    private Point _bandStart;
+
     private void AddElement_Click(object sender, RoutedEventArgs e)
     {
         if (_screen is null || (sender as FrameworkElement)?.Tag is not string tag || !Enum.TryParse<HmiKind>(tag, out var kind)) return;
@@ -733,60 +768,142 @@ public partial class HmiWindow : Window
             HmiKind.Botao => (150d, 60d, "Botão"),
             HmiKind.Valor => (200d, 110d, "Valor"),
             HmiKind.Setpoint => (230d, 120d, "Setpoint"),
-            _ => (260d, 90d, "Nível")
+            HmiKind.Barra => (260d, 90d, "Nível"),
+            HmiKind.Motor => (110d, 130d, "Motor"),
+            HmiKind.Bomba => (110d, 130d, "Bomba"),
+            HmiKind.Valvula => (100d, 110d, "Válvula"),
+            HmiKind.Tanque => (140d, 220d, "Tanque"),
+            HmiKind.Esteira => (280d, 90d, "Esteira"),
+            HmiKind.Sinaleiro => (70d, 190d, string.Empty),
+            HmiKind.Tubo => (200d, 22d, string.Empty),
+            HmiKind.Estados => (220d, 100d, "Estado"),
+            HmiKind.Medidor => (180d, 170d, "Pressão"),
+            HmiKind.Tendencia => (300d, 170d, "Tendência"),
+            HmiKind.Painel => (320d, 220d, "Área"),
+            _ => (160d, 120d, string.Empty)
         };
-        if (kind >= HmiKind.Motor)
+
+        switch (kind)
         {
-            (data.Width, data.Height, data.Text) = kind switch
-            {
-                HmiKind.Motor => (110d, 130d, "Motor"),
-                HmiKind.Bomba => (110d, 130d, "Bomba"),
-                HmiKind.Valvula => (100d, 110d, "Válvula"),
-                HmiKind.Tanque => (140d, 220d, "Tanque"),
-                HmiKind.Esteira => (280d, 90d, "Esteira"),
-                _ => (70d, 190d, string.Empty)
-            };
-            if (kind == HmiKind.Tanque)
-            {
+            case HmiKind.Tanque:
                 data.OnColor = "Azul";
                 data.Unit = "%";
-            }
+                break;
+            case HmiKind.Tubo:
+                data.OnColor = "Azul";
+                break;
+            case HmiKind.Painel:
+                data.OnColor = "Branco";
+                data.FontSize = 13;
+                break;
+            case HmiKind.Estados:
+                data.DataType = DataType.Int16;
+                break;
+            case HmiKind.Tendencia:
+                data.Max = 0; // 0 = escala automática
+                break;
+            case HmiKind.Texto:
+                data.FontSize = 20;
+                break;
         }
-        if (kind is HmiKind.Lampada or HmiKind.Botao or HmiKind.Motor or HmiKind.Bomba or HmiKind.Valvula or HmiKind.Esteira or HmiKind.Sinaleiro)
+        if (kind is HmiKind.Lampada or HmiKind.Botao or HmiKind.Motor or HmiKind.Bomba or HmiKind.Valvula
+            or HmiKind.Esteira or HmiKind.Sinaleiro or HmiKind.Tubo)
             data.DataType = DataType.Bool;
-        if (kind == HmiKind.Texto) data.FontSize = 20;
+        data.Faceplate = kind is HmiKind.Motor or HmiKind.Bomba or HmiKind.Valvula or HmiKind.Tanque or HmiKind.Esteira
+            or HmiKind.Valor or HmiKind.Medidor or HmiKind.Estados or HmiKind.Lampada;
 
         // Nova peça já ligada à conexão selecionada na janela principal (se houver)
-        if (kind != HmiKind.Texto && _main.SelectedConnection is { } connection) data.ConnectionName = connection.Name;
+        if (kind is not (HmiKind.Texto or HmiKind.Painel or HmiKind.Imagem) && _main.SelectedConnection is { } connection)
+            data.ConnectionName = connection.Name;
 
         var step = _screen.Elements.Count % 12;
         data.X = 40 + step * 30;
         data.Y = 40 + step * 30;
 
-        _screen.Elements.Add(data);
+        // painel e imagem nascem atrás dos outros elementos
         var vm = Wrap(data);
-        _elements.Add(vm);
-        Select(vm);
+        if (kind is HmiKind.Painel)
+        {
+            _screen.Elements.Insert(0, data);
+            _elements.Insert(0, vm);
+        }
+        else
+        {
+            _screen.Elements.Add(data);
+            _elements.Add(vm);
+        }
+        SetSelection(new[] { vm });
+        FlushUndo();
         _main.MarkDirty();
         UpdateStatus();
+
+        if (kind == HmiKind.Imagem) PickElementImage(vm);
     }
 
-    private void Select(HmiElementViewModel? vm)
+    private void Select(HmiElementViewModel? vm) =>
+        SetSelection(vm is null ? Array.Empty<HmiElementViewModel>() : new[] { vm });
+
+    private void SetSelection(IEnumerable<HmiElementViewModel> items)
     {
-        _selected = vm;
-        foreach (var element in _elements) element.IsSelected = ReferenceEquals(element, vm);
+        var list = items.Distinct().ToList();
+        _selection.Clear();
+        _selection.AddRange(list);
+        foreach (var element in _elements) element.IsSelected = _selection.Contains(element);
+        _selected = _selection.Count == 1 ? _selection[0] : null;
+
         PropertiesPanel.DataContext = null;
-        if (vm is not null) RefreshSources();
-        PropertiesPanel.DataContext = vm;
+        if (_selected is not null) RefreshSources();
+        PropertiesPanel.DataContext = _selected;
         WatchBox.SelectedItem = null;
-        PropertiesPanel.Visibility = vm is null ? Visibility.Collapsed : Visibility.Visible;
-        NoSelectionText.Visibility = vm is null ? Visibility.Visible : Visibility.Collapsed;
+
+        PropertiesPanel.Visibility = _selected is null ? Visibility.Collapsed : Visibility.Visible;
+        MultiSelectPanel.Visibility = _selection.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+        MultiSelectText.Text = $"{_selection.Count} elementos selecionados";
+        NoSelectionText.Visibility = _selection.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    // ----- seleção por retângulo (arrastar no fundo) -----
 
     private void Surface_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (!_running && ReferenceEquals(e.OriginalSource, Surface)) Select(null);
+        if (_running || !ReferenceEquals(e.OriginalSource, Surface)) return;
+        Keyboard.Focus(Surface);
+        _banding = true;
+        _bandStart = e.GetPosition(Surface);
+        Canvas.SetLeft(SelectionRect, _bandStart.X);
+        Canvas.SetTop(SelectionRect, _bandStart.Y);
+        SelectionRect.Width = 0;
+        SelectionRect.Height = 0;
+        SelectionRect.Visibility = Visibility.Visible;
+        if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) Select(null);
+        Surface.CaptureMouse();
+        e.Handled = true;
     }
+
+    private void Surface_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_banding) return;
+        var p = e.GetPosition(Surface);
+        Canvas.SetLeft(SelectionRect, Math.Min(p.X, _bandStart.X));
+        Canvas.SetTop(SelectionRect, Math.Min(p.Y, _bandStart.Y));
+        SelectionRect.Width = Math.Abs(p.X - _bandStart.X);
+        SelectionRect.Height = Math.Abs(p.Y - _bandStart.Y);
+    }
+
+    private void Surface_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_banding) return;
+        _banding = false;
+        Surface.ReleaseMouseCapture();
+        SelectionRect.Visibility = Visibility.Collapsed;
+
+        var band = new Rect(Canvas.GetLeft(SelectionRect), Canvas.GetTop(SelectionRect), SelectionRect.Width, SelectionRect.Height);
+        if (band.Width < 3 && band.Height < 3) return; // foi só um clique no fundo
+        var hit = _elements.Where(x => band.IntersectsWith(new Rect(x.X, x.Y, x.Width, x.Height)));
+        SetSelection(Keyboard.Modifiers.HasFlag(ModifierKeys.Control) ? _selection.Concat(hit) : hit);
+    }
+
+    // ----- mover -----
 
     private static double Snap(double value) => Math.Round(value / GridSize) * GridSize;
 
@@ -794,35 +911,65 @@ public partial class HmiWindow : Window
     {
         if (_running || ElementOf(sender) is not { } vm) return;
         if (e.OriginalSource is Thumb) return; // o canto azul é o redimensionar
-        Select(vm);
+        e.Handled = true;
+
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            SetSelection(_selection.Contains(vm) ? _selection.Where(x => x != vm).ToList() : _selection.Append(vm).ToList());
+            return;
+        }
+        if (!_selection.Contains(vm)) Select(vm);
+        if (vm.Locked) return;
+
         _dragging = vm;
         _dragStart = e.GetPosition(Surface);
-        _dragOriginX = vm.X;
-        _dragOriginY = vm.Y;
+        _dragOrigins.Clear();
+        foreach (var item in _selection.Where(x => !x.Locked)) _dragOrigins[item] = new Point(item.X, item.Y);
         ((UIElement)sender).CaptureMouse();
-        e.Handled = true;
     }
 
     private void Element_MouseMove(object sender, MouseEventArgs e)
     {
-        if (_dragging is null || e.LeftButton != MouseButtonState.Pressed) return;
+        if (_dragging is null || e.LeftButton != MouseButtonState.Pressed || !_dragOrigins.TryGetValue(_dragging, out var origin)) return;
         var p = e.GetPosition(Surface);
-        _dragging.X = Math.Clamp(Snap(_dragOriginX + p.X - _dragStart.X), 0, Math.Max(0, Surface.Width - _dragging.Width));
-        _dragging.Y = Math.Clamp(Snap(_dragOriginY + p.Y - _dragStart.Y), 0, Math.Max(0, Surface.Height - _dragging.Height));
+        // o elemento agarrado encaixa na grade; os outros andam o mesmo tanto
+        var dx = Snap(origin.X + p.X - _dragStart.X) - origin.X;
+        var dy = Snap(origin.Y + p.Y - _dragStart.Y) - origin.Y;
+        foreach (var (item, start) in _dragOrigins)
+        {
+            item.X = Math.Clamp(start.X + dx, 0, Math.Max(0, Surface.Width - item.Width));
+            item.Y = Math.Clamp(start.Y + dy, 0, Math.Max(0, Surface.Height - item.Height));
+        }
     }
 
     private void Element_MouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (_dragging is null) return;
         _dragging = null;
+        _dragOrigins.Clear();
         ((UIElement)sender).ReleaseMouseCapture();
+        FlushUndo();
     }
+
+    private void Resize_DragStarted(object sender, DragStartedEventArgs e) => FlushUndo();
 
     private void Resize_DragDelta(object sender, DragDeltaEventArgs e)
     {
-        if (ElementOf(sender) is not { } vm) return;
+        if (ElementOf(sender) is not { Locked: false } vm) return;
         vm.Width = Math.Round(Math.Min(vm.Width + e.HorizontalChange, Surface.Width - vm.X));
         vm.Height = Math.Round(Math.Min(vm.Height + e.VerticalChange, Surface.Height - vm.Y));
     }
+
+    // ----- clique no modo Executar: faceplate -----
+
+    private void Element_RunClick(object sender, MouseButtonEventArgs e)
+    {
+        if (!_running || ElementOf(sender) is not { IsClickable: true } vm) return;
+        OpenFaceplate(vm);
+        e.Handled = true;
+    }
+
+    // ----- propriedades -----
 
     private void WatchBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -834,7 +981,8 @@ public partial class HmiWindow : Window
         vm.DataType = item.Address.DataType;
         vm.ByteOrder = item.Address.ByteOrder;
         vm.Length = item.Address.Length;
-        if (vm.Text is "Lâmpada" or "Botão" or "Valor" or "Setpoint" or "Nível" or "Motor" or "Bomba" or "Válvula" or "Tanque" or "Esteira")
+        if (vm.Text is "Lâmpada" or "Botão" or "Valor" or "Setpoint" or "Nível" or "Motor" or "Bomba" or "Válvula" or "Tanque"
+            or "Esteira" or "Estado" or "Pressão" or "Tendência")
             vm.Text = item.Label;
         StatusText.Text = $"'{Label(vm)}' ligado ao item '{item.Label}' ({item.ConnectionName} · {item.AddressText}): valor, escala, unidade e alarme vêm do item.";
     }
@@ -855,44 +1003,84 @@ public partial class HmiWindow : Window
         vm.LinkedItemName = string.Empty;
     }
 
+    private void ElementImage_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selected is { } vm) PickElementImage(vm);
+    }
+
+    // ----- duplicar, ordem, travar, excluir -----
+
     private void Duplicate_Click(object sender, RoutedEventArgs e) => DuplicateSelected();
 
     private void DuplicateSelected()
     {
-        if (_screen is null || _selected is null) return;
-        var copy = _selected.Data.Clone();
-        copy.X = Math.Min(copy.X + 20, Math.Max(0, Surface.Width - copy.Width));
-        copy.Y = Math.Min(copy.Y + 20, Math.Max(0, Surface.Height - copy.Height));
-        _screen.Elements.Add(copy);
-        var vm = Wrap(copy);
-        _elements.Add(vm);
-        Select(vm);
-        _main.MarkDirty();
-        UpdateStatus();
+        if (_screen is null || _selection.Count == 0) return;
+        PasteData(_selection.Select(x => x.Data.Clone()).ToList(), 20);
     }
 
-    private void BringFront_Click(object sender, RoutedEventArgs e)
+    private void BringFront_Click(object sender, RoutedEventArgs e) => Reorder(front: true);
+
+    private void SendBack_Click(object sender, RoutedEventArgs e) => Reorder(front: false);
+
+    private void Reorder(bool front)
     {
-        if (_screen is null || _selected is not { } vm) return;
-        _screen.Elements.Remove(vm.Data);
-        _screen.Elements.Add(vm.Data);
-        _elements.Remove(vm);
-        _elements.Add(vm);
-        Select(vm);
+        if (_screen is null || _selection.Count == 0) return;
+        var moving = _elements.Where(x => _selection.Contains(x)).ToList(); // mantém a ordem relativa
+        foreach (var vm in moving)
+        {
+            _screen.Elements.Remove(vm.Data);
+            _elements.Remove(vm);
+        }
+        if (front)
+        {
+            foreach (var vm in moving)
+            {
+                _screen.Elements.Add(vm.Data);
+                _elements.Add(vm);
+            }
+        }
+        else
+        {
+            for (var i = moving.Count - 1; i >= 0; i--)
+            {
+                _screen.Elements.Insert(0, moving[i].Data);
+                _elements.Insert(0, moving[i]);
+            }
+        }
+        SetSelection(moving);
+        FlushUndo();
         _main.MarkDirty();
+    }
+
+    private void LockAll_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (var vm in _selection) vm.Locked = true;
+        FlushUndo();
+    }
+
+    private void UnlockAll_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (var vm in _selection) vm.Locked = false;
+        FlushUndo();
     }
 
     private void Delete_Click(object sender, RoutedEventArgs e) => DeleteSelected();
 
     private void DeleteSelected()
     {
-        if (_screen is null || _selected is not { } vm) return;
-        _screen.Elements.Remove(vm.Data);
-        _elements.Remove(vm);
+        if (_screen is null || _selection.Count == 0) return;
+        foreach (var vm in _selection.ToList())
+        {
+            _screen.Elements.Remove(vm.Data);
+            _elements.Remove(vm);
+        }
         Select(null);
+        FlushUndo();
         _main.MarkDirty();
         UpdateStatus();
     }
+
+    // ----- teclado -----
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -908,27 +1096,41 @@ public partial class HmiWindow : Window
             e.Handled = true;
             return;
         }
-        if (_running || _selected is null || Keyboard.FocusedElement is TextBox) return;
+        if (_running || Keyboard.FocusedElement is TextBox) return;
+
+        var ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
         var step = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? GridSize : 1;
         switch (e.Key)
         {
+            case Key.Z when ctrl:
+                Undo();
+                break;
+            case Key.Y when ctrl:
+                Redo();
+                break;
+            case Key.C when ctrl:
+                CopySelection();
+                break;
+            case Key.V when ctrl:
+                PasteClipboard();
+                break;
+            case Key.A when ctrl:
+                SetSelection(_elements.ToList());
+                break;
+            case Key.D when ctrl:
+                DuplicateSelected();
+                break;
             case Key.Delete:
                 DeleteSelected();
                 break;
-            case Key.D when Keyboard.Modifiers.HasFlag(ModifierKeys.Control):
-                DuplicateSelected();
-                break;
-            case Key.Left:
-                _selected.X -= step;
-                break;
-            case Key.Right:
-                _selected.X += step;
-                break;
-            case Key.Up:
-                _selected.Y -= step;
-                break;
-            case Key.Down:
-                _selected.Y += step;
+            case Key.Left or Key.Right or Key.Up or Key.Down when _selection.Count > 0:
+                foreach (var vm in _selection.Where(x => !x.Locked))
+                {
+                    if (e.Key == Key.Left) vm.X -= step;
+                    if (e.Key == Key.Right) vm.X += step;
+                    if (e.Key == Key.Up) vm.Y -= step;
+                    if (e.Key == Key.Down) vm.Y += step;
+                }
                 break;
             default:
                 return;

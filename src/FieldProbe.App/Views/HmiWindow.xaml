@@ -9,6 +9,8 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="B2V" />
         <hmi:InverseBoolToVisibilityConverter x:Key="InverseB2V" />
+        <hmi:NeedleRotateConverter x:Key="NeedleRotate" />
+        <hmi:FractionScaleYConverter x:Key="FractionScaleY" />
 
         <Style x:Key="PropLabel" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
@@ -611,11 +613,8 @@
                                                 <Viewbox>
                                                     <Canvas Width="120" Height="112">
                                                         <Path Data="M 24.6,95.4 A 50,50 0 1 1 95.4,95.4" Stroke="#D0D7DE" StrokeThickness="10" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
-                                                        <Line X1="60" Y1="60" X2="60" Y2="18" Stroke="{Binding BarBrush}" StrokeThickness="4" StrokeEndLineCap="Triangle">
-                                                            <Line.RenderTransform>
-                                                                <RotateTransform Angle="{Binding NeedleAngle}" CenterX="60" CenterY="60" />
-                                                            </Line.RenderTransform>
-                                                        </Line>
+                                                        <Line X1="60" Y1="60" X2="60" Y2="18" Stroke="{Binding BarBrush}" StrokeThickness="4" StrokeEndLineCap="Triangle"
+                                                              RenderTransform="{Binding NeedleAngle, Converter={StaticResource NeedleRotate}}" />
                                                         <Ellipse Canvas.Left="53" Canvas.Top="53" Width="14" Height="14" Fill="#24292F" />
                                                         <TextBlock Canvas.Left="14" Canvas.Top="100" Text="{Binding MinText}" FontSize="9" Foreground="#8C959F" />
                                                         <TextBlock Canvas.Left="84" Canvas.Top="100" Width="24" TextAlignment="Right" Text="{Binding MaxText}" FontSize="9" Foreground="#8C959F" />
@@ -692,9 +691,8 @@
                                             <Border Visibility="{Binding IsTank, Converter={StaticResource B2V}}" Margin="10,2" CornerRadius="16"
                                                     BorderBrush="#24292F" BorderThickness="3" Background="#F6F8FA">
                                                 <Grid ClipToBounds="True">
-                                                    <Rectangle Fill="{Binding LiquidBrush}" Opacity="0.85" RenderTransformOrigin="0.5,1">
-                                                        <Rectangle.RenderTransform><ScaleTransform ScaleY="{Binding TankFraction}" /></Rectangle.RenderTransform>
-                                                    </Rectangle>
+                                                    <Rectangle Fill="{Binding LiquidBrush}" Opacity="0.85" RenderTransformOrigin="0.5,1"
+                                                               RenderTransform="{Binding TankFraction, Converter={StaticResource FractionScaleY}}" />
                                                     <Border Background="#E6FFFFFF" CornerRadius="3" Padding="6,1" HorizontalAlignment="Center" VerticalAlignment="Center">
                                                         <TextBlock FontWeight="Bold" Foreground="{Binding ValueForeground}">
                                                             <Run Text="{Binding DisplayText, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding UnitText, Mode=OneWay}" />

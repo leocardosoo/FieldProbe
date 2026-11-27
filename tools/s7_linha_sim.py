@@ -11,6 +11,8 @@ Uso:
     python s7_linha_sim.py --port 1102     # outra porta
     python s7_linha_sim.py --otimizado 17  # DB17 com "Optimized block access" (recusa PUT/GET)
     python s7_linha_sim.py --mapa          # só mostra o mapa de variáveis (endereços) e sai
+    python s7_linha_sim.py --falhas 5      # falhas sozinhas, em média 1 a cada 5 min (padrão: desligado)
+    python s7_linha_sim.py --auto-reset 30 # a falha se reconhece sozinha depois de 30 s (padrão: só com 'reset')
 
 A linha:
     Esteira de entrada -> Estação 10 (alimentação) -> Estação 20 (prensa) -> Estação 30 (parafusadeira)
@@ -324,8 +326,10 @@ def print_map():
 # ============================================================================================
 
 class LineMemory(PlcMemory):
-    def __init__(self, optimized=(), putget=True):
+    def __init__(self, optimized=(), putget=True, fault_minutes=0.0, auto_reset=0.0):
         super().__init__(dbs=(), optimized=optimized, putget=putget)
+        self.fault_minutes = fault_minutes  # 0 = sem falhas sozinhas (só pelo comando 'falha')
+        self.auto_reset = auto_reset        # 0 = a falha fica até 'reset' ou DB16.DBX0.0
         self.db = {db: bytearray(size) for db, size in SIZES.items()}
         self.areas = {0x81: bytearray(128), 0x82: bytearray(128), 0x83: bytearray(512)}
         self.running_line = True
@@ -432,8 +436,12 @@ class LineMemory(PlcMemory):
                 if self.fault_request:
                     self.fault_request = False
                     self._raise_fault(random.choice(list(STATION_DBS)))
-                elif random.random() < dt / 240:  # uma falha a cada ~4 min, em média
+                elif self.fault_minutes > 0 and random.random() < dt / (self.fault_minutes * 60):
                     self._raise_fault(random.choice(list(STATION_DBS)))
+                if self.auto_reset > 0:
+                    for db, (_, since) in list(self.faults.items()):
+                        if time.time() - since >= self.auto_reset:
+                            self._clear_fault(db)
                 if g(18, "Carregar_Receita"):
                     s(18, "Carregar_Receita", False)
                     self._load_recipe(g(18, "Receita_Ativa"))
@@ -708,6 +716,10 @@ def main():
     parser.add_argument("--otimizado", default="", help="DBs com acesso otimizado (recusam PUT/GET), ex.: 17")
     parser.add_argument("--sem-putget", action="store_true", help="CPU com PUT/GET desabilitado")
     parser.add_argument("--mapa", action="store_true", help="Mostra o mapa de endereços e sai")
+    parser.add_argument("--falhas", type=float, default=0.0,
+                        help="Falhas sozinhas, em média 1 a cada N minutos (padrão 0 = só com o comando 'falha')")
+    parser.add_argument("--auto-reset", type=float, default=0.0,
+                        help="Reconhece a falha sozinho depois de N segundos (padrão 0 = só com 'reset')")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -717,7 +729,7 @@ def main():
 
     optimized = [int(x) for x in args.otimizado.replace(";", ",").split(",") if x.strip()]
     cpu = CPUS[args.cpu]
-    memory = LineMemory(optimized, not args.sem_putget)
+    memory = LineMemory(optimized, not args.sem_putget, args.falhas, args.auto_reset)
     threading.Thread(target=memory.simulate, daemon=True).start()
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

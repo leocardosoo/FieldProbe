@@ -42,6 +42,9 @@ public sealed class ConnectionViewModel : ObservableObject
 
     public bool SupportsAddressScan => Driver is IAddressScanner;
 
+    /// <summary>Aceita variável com endereço livre (a pasta sai do endereço): S7, Modbus e Mitsubishi.</summary>
+    public bool SupportsFreeVariables => Driver is IAddressScanner or FieldProbe.Drivers.Mitsubishi.MitsubishiDriver;
+
     public ObservableCollection<TagNodeViewModel> Nodes { get; } = new();
 
     /// <summary>Sessão aberta pelo usuário (pode estar momentaneamente caída e reconectando).</summary>
@@ -100,10 +103,11 @@ public sealed class ConnectionViewModel : ObservableObject
         var p when p.StartsWith("MQTT", StringComparison.OrdinalIgnoreCase) => "MQTT",
         var p when p.StartsWith("Siemens", StringComparison.OrdinalIgnoreCase) => "S7",
         var p when p.StartsWith("EtherNet", StringComparison.OrdinalIgnoreCase) => "EIP",
+        var p when p.StartsWith("Mitsubishi", StringComparison.OrdinalIgnoreCase) => "MELSEC",
         var p => p.Length > 6 ? p[..6].ToUpperInvariant() : p.ToUpperInvariant()
     };
 
-    /// <summary>Família do protocolo (usada nas cores): Modbus, OpcUa, Mqtt, S7, Eip.</summary>
+    /// <summary>Família do protocolo (usada nas cores): Modbus, OpcUa, Mqtt, S7, Eip, Melsec.</summary>
     public string ProtocolFamily => ProtocolBadge switch
     {
         "MODBUS" or "RTU" => "Modbus",
@@ -111,6 +115,7 @@ public sealed class ConnectionViewModel : ObservableObject
         "MQTT" => "Mqtt",
         "S7" => "S7",
         "EIP" => "Eip",
+        "MELSEC" => "Melsec",
         _ => "Other"
     };
 

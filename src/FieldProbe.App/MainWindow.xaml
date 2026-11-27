@@ -244,6 +244,7 @@
                                                             <DataTrigger Binding="{Binding ProtocolFamily}" Value="Mqtt"><Setter Property="Background" Value="#1A7F37" /></DataTrigger>
                                                             <DataTrigger Binding="{Binding ProtocolFamily}" Value="S7"><Setter Property="Background" Value="#00838F" /></DataTrigger>
                                                             <DataTrigger Binding="{Binding ProtocolFamily}" Value="Eip"><Setter Property="Background" Value="#C2410C" /></DataTrigger>
+                                                            <DataTrigger Binding="{Binding ProtocolFamily}" Value="Melsec"><Setter Property="Background" Value="#B91C1C" /></DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
                                                 </Border.Style>
@@ -361,7 +362,7 @@
                                 </StackPanel.Style>
                                 <TextBlock Text="&#xE968;" FontFamily="Segoe MDL2 Assets" FontSize="34" Foreground="#B0B7C0" HorizontalAlignment="Center" />
                                 <TextBlock Text="Nenhuma conexão no projeto" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,8,0,4" />
-                                <TextBlock Text="Crie uma conexão para começar a testar Modbus, OPC UA, MQTT, Siemens S7 ou EtherNet/IP." Style="{StaticResource Muted}" TextAlignment="Center" MaxWidth="230" />
+                                <TextBlock Text="Crie uma conexão para começar a testar Modbus, OPC UA, MQTT, Siemens S7, EtherNet/IP ou Mitsubishi." Style="{StaticResource Muted}" TextAlignment="Center" MaxWidth="230" />
                                 <Button Content="Nova conexão" Style="{StaticResource PrimaryButton}" Command="{Binding NewConnectionCommand}" Margin="0,12,0,0" HorizontalAlignment="Center" />
                             </StackPanel>
                         </Grid>

@@ -195,7 +195,8 @@ public sealed class NetworkScanner
             (44818, EtherNetIpDriver.Protocol),
             (102, S7Driver.Protocol),
             (502, ModbusDrivers.TcpName),
-            (1883, MqttDriver.Protocol)
+            (1883, MqttDriver.Protocol),
+            (5007, FieldProbe.Drivers.Mitsubishi.MitsubishiDriver.Protocol)
         };
         foreach (var (port, protocol) in preference)
         {

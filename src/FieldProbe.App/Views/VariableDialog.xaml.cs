@@ -3,17 +3,20 @@ using System.Windows.Controls;
 using FieldProbe.App.ViewModels;
 using System.Text.RegularExpressions;
 using FieldProbe.Core;
+using FieldProbe.Drivers.Mitsubishi;
 using FieldProbe.Drivers.Modbus;
 
 namespace FieldProbe.App.Views;
 
-/// <summary>Cria ou edita uma variável do usuário numa pasta da árvore (DB de S7, área Modbus).</summary>
+/// <summary>Cria ou edita uma variável do usuário numa pasta da árvore (DB de S7, área Modbus, dispositivo Mitsubishi).</summary>
 public partial class VariableDialog : Window
 {
     private readonly ConnectionViewModel _connection;
     private readonly string _folderKey;   // vazio = endereço livre (a pasta sai do endereço)
     private readonly Func<string, bool> _nameInUse;
     private readonly bool _isModbus;
+    private readonly bool _isMelsec;
+    private readonly McSeries _series;
     private readonly int? _dbSize;
 
     public VariableDialog(ConnectionViewModel connection, string folderKey, string folderTitle, CustomTag? existing,
@@ -24,6 +27,8 @@ public partial class VariableDialog : Window
         _folderKey = folderKey;
         _nameInUse = nameInUse;
         _isModbus = connection.Protocol.Contains("Modbus", StringComparison.OrdinalIgnoreCase);
+        _isMelsec = connection.Protocol.StartsWith("Mitsubishi", StringComparison.OrdinalIgnoreCase);
+        _series = MitsubishiDriver.ParseSeries(connection.Settings.GetOption("Series", MitsubishiDrivers.SeriesQ));
         _dbSize = FindDbSize(connection.Settings, folderKey);
 
         Title = existing is null ? "Adicionar variável" : "Editar variável";
@@ -31,7 +36,10 @@ public partial class VariableDialog : Window
         HeaderText.Text = folderKey.Length == 0 ? $"{Title} · {connection.Name}" : $"{Title} · {folderTitle}";
         SubHeaderText.Text = _isModbus
             ? "Use o endereço e o tipo do manual do equipamento (ex.: HR:100, Float32). Valores de 32 bits ocupam 2 registradores."
-            : "Use o endereço e o tipo do projeto do TIA Portal (coluna Offset do DB). Ex.: DB1.DBD4 = Real, DB1.DBW2 = Int, DB1.DBX0.0 = Bool.";
+            : _isMelsec
+                ? "Use o endereço e o tipo do projeto do GX Works. Ex.: D100 = Int16, D200 = Float32 (usa D200 e D201), M10 = Bool, D100.5 = bit 5 do D100." +
+                  (_series == McSeries.IqF ? " No iQ-F, X e Y são octais (X0 a X7, X10...)." : string.Empty)
+                : "Use o endereço e o tipo do projeto do TIA Portal (coluna Offset do DB). Ex.: DB1.DBD4 = Real, DB1.DBW2 = Int, DB1.DBX0.0 = Bool.";
         if (_dbSize is int size && size > 0)
         {
             var limits = $"{folderKey} tem {size} bytes (offset 0 a {size - 1}): último bit {folderKey}.DBX{size - 1}.7";
@@ -45,7 +53,7 @@ public partial class VariableDialog : Window
 
         NameBox.Text = existing?.Name ?? string.Empty;
         AddressBox.Text = existing?.Address ?? addressHint;
-        TypeBox.SelectedItem = existing?.DataType ?? GuessType(addressHint);
+        TypeBox.SelectedItem = existing?.DataType ?? (_isMelsec ? GuessMelsecType(addressHint) : GuessType(addressHint));
         OrderBox.SelectedItem = existing?.ByteOrder ?? ByteOrder.ABCD;
         LengthBox.Text = (existing is { Length: > 1 } ? existing.Length : 20).ToString();
 
@@ -73,6 +81,10 @@ public partial class VariableDialog : Window
         return DataType.Float32;
     }
 
+    /// <summary>Mitsubishi: bit para M/X/Y/B... e para D100.5; Int16 (padrão do GX Works) para D/W/R/TN/CN/SD.</summary>
+    private DataType GuessMelsecType(string address) =>
+        McAddress.TryParse(address, _series, out var a) && (a!.Device.IsBit || a.IsWordBit) ? DataType.Bool : DataType.Int16;
+
     private void TypeBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateLength();
 
     private void UpdateLength()
@@ -97,8 +109,22 @@ public partial class VariableDialog : Window
         if (folder is null)
             return Fail(_isModbus
                 ? "Endereço Modbus inválido. Ex.: HR:100, IR:5, CO:0, DI:3 (ou 40101, 30006...)."
-                : "Endereço S7 inválido. Ex.: DB12.DBD4, DB1.DBX0.0, MW10, M0.1, I0.0, QW2.");
+                : _isMelsec
+                    ? "Endereço Mitsubishi inválido. Ex.: D100, M10, X1F, Y20, W1A, R0, TN0, CN0, SM400, SD203, D100.5" +
+                      (_series == McSeries.IqF ? " (no iQ-F, X e Y são octais: só dígitos de 0 a 7)." : ".")
+                    : "Endereço S7 inválido. Ex.: DB12.DBD4, DB1.DBX0.0, MW10, M0.1, I0.0, QW2.");
         if (checkName && _nameInUse(name)) return Fail($"Já existe uma variável '{name}' em {folder}.");
+
+        // Mitsubishi: o endereço precisa ser válido e da mesma pasta (D100 na pasta D, M10 na pasta M...)
+        if (_isMelsec && _folderKey.Length > 0)
+        {
+            var addressFolder = FolderFromAddress(address);
+            if (addressFolder is null) return Fail($"Endereço Mitsubishi inválido: '{address}'. Ex.: D100, M10, X1F, D100.5.");
+            if (!string.Equals(addressFolder, _folderKey, StringComparison.OrdinalIgnoreCase))
+                return Fail($"{address} é da pasta {addressFolder}, não da {_folderKey}. Adicione na pasta certa ou clique na conexão para usar endereço livre.");
+            if (type == DataType.String && McAddress.TryParse(address, _series, out var stringAddress) && (stringAddress!.Device.IsBit || stringAddress.IsWordBit))
+                return Fail("String só faz sentido em registradores de palavra (D, W, R...).");
+        }
 
         // Variável de um DB precisa estar nesse DB
         if (_folderKey.StartsWith("DB", StringComparison.OrdinalIgnoreCase) &&
@@ -107,7 +133,7 @@ public partial class VariableDialog : Window
 
         var length = 1;
         if (type == DataType.String && (!int.TryParse(LengthBox.Text.Trim(), out length) || length is < 1 or > 254))
-            return Fail("Tamanho da String: de 1 a 254 caracteres.");
+            return Fail("Tamanho da String: de 1 a 254 caracteres." + (_isMelsec ? " Cada registrador guarda 2 caracteres." : string.Empty));
 
         // Tamanho do DB conhecido (Procurar DBs): avisa antes de ler se o endereço passa do fim
         if (_dbSize is int dbSize && DbRange(address, type, length) is { } range && range.Start + range.Bytes > dbSize)
@@ -128,6 +154,8 @@ public partial class VariableDialog : Window
     /// <summary>Pasta da árvore em que o endereço se encaixa, ou nulo se o endereço não for reconhecido.</summary>
     private string? FolderFromAddress(string address)
     {
+        if (_isMelsec) return McAddress.FolderOf(address, _series);
+
         if (_isModbus)
         {
             try

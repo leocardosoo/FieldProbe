@@ -78,7 +78,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         AddSelectedNodeCommand = new RelayCommand(AddSelectedNode, () => SelectedTreeItem is TagNodeViewModel { IsVariable: true });
         AddVariableCommand = new AsyncRelayCommand(AddVariableAsync, HandleError, () =>
             SelectedTreeItem is TagNodeViewModel node && (node.CanAddVariable || node.IsCustom) ||
-            SelectedTreeItem is ConnectionViewModel { SupportsAddressScan: true });
+            SelectedTreeItem is ConnectionViewModel { SupportsFreeVariables: true });
         RemoveFolderCommand = new AsyncRelayCommand(RemoveFolderAsync, HandleError, () =>
             SelectedTreeItem is TagNodeViewModel node && FolderKey(node) is { } key &&
             node.Connection.Driver is IRemovableFolders removable && removable.CanRemoveFolder(key));
@@ -616,7 +616,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private async Task AddVariableAsync()
     {
         // Clicou na conexão: endereço livre, a pasta sai do próprio endereço (cria o DB na árvore se faltar)
-        if (SelectedTreeItem is ConnectionViewModel { SupportsAddressScan: true } target)
+        if (SelectedTreeItem is ConnectionViewModel { SupportsFreeVariables: true } target)
         {
             await AddFreeVariableAsync(target);
             return;

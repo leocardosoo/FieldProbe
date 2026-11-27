@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Threading;
 using FieldProbe.Core;
 using FieldProbe.Drivers.EtherNetIP;
+using FieldProbe.Drivers.Mitsubishi;
 using FieldProbe.Drivers.Modbus;
 using FieldProbe.Drivers.Mqtt;
 using FieldProbe.Drivers.OpcUa;
@@ -38,6 +39,7 @@ public partial class App : Application
         DriverRegistry.Register(MqttDrivers.Info);
         DriverRegistry.Register(S7Drivers.Info);
         DriverRegistry.Register(EtherNetIpDrivers.Info);
+        DriverRegistry.Register(MitsubishiDrivers.Info);
     }
 
     private static void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs args)

@@ -151,7 +151,7 @@ public static class AuditReport
         // Metodologia
         sb.Append("<section><h2>7. Metodologia e limitações</h2><p class=\"muted\">");
         sb.Append("A varredura abre conexões TCP nas portas selecionadas e executa apenas handshakes de identificação ");
-        sb.Append("(Modbus FC 43, EtherNet/IP ListIdentity, COTP do S7, HEL/ACK do OPC UA, CONNECT anônimo do MQTT e modelo da CPU Mitsubishi pelo MC Protocol). ");
+        sb.Append("(Modbus FC 43, EtherNet/IP ListIdentity, COTP do S7, HEL/ACK do OPC UA, CONNECT anônimo do MQTT, handshake FINS/TCP com modelo e modo da CPU Omron e modelo da CPU Mitsubishi pelo MC Protocol). ");
         sb.Append("Nenhuma variável de processo foi escrita e nenhuma vulnerabilidade foi explorada. O diagnóstico das conexões usa ");
         sb.Append("sessões autorizadas configuradas no projeto. Este relatório é um levantamento técnico e não substitui uma avaliação ");
         sb.Append("de risco completa (ex.: IEC 62443-3-2), testes de intrusão ou a análise das políticas e procedimentos da planta.");

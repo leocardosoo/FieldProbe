@@ -6,6 +6,7 @@ using FieldProbe.Drivers.EtherNetIP;
 using FieldProbe.Drivers.Mitsubishi;
 using FieldProbe.Drivers.Modbus;
 using FieldProbe.Drivers.Mqtt;
+using FieldProbe.Drivers.Omron;
 using FieldProbe.Drivers.OpcUa;
 using FieldProbe.Drivers.Siemens;
 
@@ -40,6 +41,7 @@ public partial class App : Application
         DriverRegistry.Register(S7Drivers.Info);
         DriverRegistry.Register(EtherNetIpDrivers.Info);
         DriverRegistry.Register(MitsubishiDrivers.Info);
+        DriverRegistry.Register(OmronDrivers.Info);
     }
 
     private static void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs args)

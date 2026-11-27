@@ -3,12 +3,16 @@ using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using FieldProbe.Drivers.Mitsubishi;
+using FieldProbe.Drivers.Omron;
 using FieldProbe.Drivers.Siemens;
 
 namespace FieldProbe.App.Services;
 
 /// <summary>CPU Mitsubishi que respondeu em MC Protocol: modelo (se informado) e série sugerida para a conexão.</summary>
 public sealed record MelsecProbe(string? Model, string? Series);
+
+/// <summary>CLP Omron que respondeu em FINS/TCP: modelo e modo (RUN, MONITOR, PROGRAM), se informados.</summary>
+public sealed record FinsProbe(string? Model, string? Mode);
 
 /// <summary>Sondas leves de identificação de protocolo (só handshake, sem ler/escrever dados de processo).</summary>
 public static class Probes
@@ -17,6 +21,51 @@ public static class Probes
     /// Mitsubishi MC Protocol (3E binário): pede o modelo da CPU (comando 0101). Não lê nem escreve dispositivos.
     /// Nulo se a porta não fala MC Protocol (outro serviço, ASCII ou sem resposta).
     /// </summary>
+    public static async Task<FinsProbe?> FinsAsync(string ip, int port, int timeoutMs, CancellationToken ct)
+    {
+        using var client = new FinsClient(ip, port, timeoutMs, udp: false, 0, 0, 0);
+        try
+        {
+            await client.ConnectAsync(ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return null; // não completou o handshake FINS/TCP
+        }
+
+        string? model = null;
+        string? mode = null;
+        try
+        {
+            model = (await client.ReadModelAsync(ct).ConfigureAwait(false)).Model;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            // handshake ok: é FINS, só não informou o modelo
+        }
+        try
+        {
+            mode = (await client.ReadStatusAsync(ct).ConfigureAwait(false)).ModeText;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            // modo indisponível
+        }
+        return new FinsProbe(string.IsNullOrWhiteSpace(model) ? null : model, mode);
+    }
+
     public static async Task<MelsecProbe?> MelsecAsync(string ip, int port, int timeoutMs, CancellationToken ct)
     {
         using var client = new McClient(ip, port, timeoutMs, 0, 0xFF, McSeries.QL);

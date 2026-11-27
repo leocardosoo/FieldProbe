@@ -19,7 +19,7 @@
 
         <TextBlock DockPanel.Dock="Top" x:Name="CopyrightText" Margin="0,0,0,6" />
         <TextBlock DockPanel.Dock="Top" Style="{StaticResource Muted}" Margin="0,0,0,12"
-                   Text="Protocolos: Modbus TCP, Modbus RTU (serial e sobre TCP), OPC UA, MQTT 3.1.1, Siemens S7, EtherNet/IP e Mitsubishi MC Protocol (SLMP). Marcas citadas pertencem aos respectivos donos; o FieldProbe não é certificado nem afiliado à OPC Foundation, ODVA, Siemens, Rockwell Automation ou Mitsubishi Electric." />
+                   Text="Protocolos: Modbus TCP, Modbus RTU (serial e sobre TCP), OPC UA, MQTT 3.1.1, Siemens S7, EtherNet/IP, Mitsubishi MC Protocol (SLMP) e Omron FINS. Marcas citadas pertencem aos respectivos donos; o FieldProbe não é certificado nem afiliado à OPC Foundation, ODVA, Siemens, Rockwell Automation, Mitsubishi Electric ou OMRON." />
 
         <TextBlock DockPanel.Dock="Top" Text="Componentes de terceiros" Style="{StaticResource SectionTitle}" />
         <TextBox x:Name="NoticesText" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"

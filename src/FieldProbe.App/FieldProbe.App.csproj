@@ -8,7 +8,7 @@
     <AssemblyName>FieldProbe</AssemblyName>
     <ApplicationIcon>Assets\fieldprobe.ico</ApplicationIcon>
     <AssemblyTitle>FieldProbe - Industrial Protocol Tester</AssemblyTitle>
-    <Description>Teste de comunicação com devices industriais: Modbus, OPC UA, MQTT, Siemens S7, EtherNet/IP e Mitsubishi MC.</Description>
+    <Description>Teste de comunicação com devices industriais: Modbus, OPC UA, MQTT, Siemens S7, EtherNet/IP, Mitsubishi MC e Omron FINS.</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,6 +20,7 @@
     <ProjectReference Include="..\FieldProbe.Core\FieldProbe.Core.csproj" />
     <ProjectReference Include="..\FieldProbe.Drivers.Modbus\FieldProbe.Drivers.Modbus.csproj" />
     <ProjectReference Include="..\FieldProbe.Drivers.Mitsubishi\FieldProbe.Drivers.Mitsubishi.csproj" />
+    <ProjectReference Include="..\FieldProbe.Drivers.Omron\FieldProbe.Drivers.Omron.csproj" />
     <ProjectReference Include="..\FieldProbe.Drivers.OpcUa\FieldProbe.Drivers.OpcUa.csproj" />
     <ProjectReference Include="..\FieldProbe.Drivers.Mqtt\FieldProbe.Drivers.Mqtt.csproj" />
     <ProjectReference Include="..\FieldProbe.Drivers.Siemens\FieldProbe.Drivers.Siemens.csproj" />

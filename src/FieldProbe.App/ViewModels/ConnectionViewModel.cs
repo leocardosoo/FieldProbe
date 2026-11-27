@@ -42,8 +42,8 @@ public sealed class ConnectionViewModel : ObservableObject
 
     public bool SupportsAddressScan => Driver is IAddressScanner;
 
-    /// <summary>Aceita variável com endereço livre (a pasta sai do endereço): S7, Modbus e Mitsubishi.</summary>
-    public bool SupportsFreeVariables => Driver is IAddressScanner or FieldProbe.Drivers.Mitsubishi.MitsubishiDriver;
+    /// <summary>Aceita variável com endereço livre (a pasta sai do endereço): S7, Modbus, Mitsubishi e Omron.</summary>
+    public bool SupportsFreeVariables => Driver is IAddressScanner or FieldProbe.Drivers.Mitsubishi.MitsubishiDriver or FieldProbe.Drivers.Omron.OmronDriver;
 
     public ObservableCollection<TagNodeViewModel> Nodes { get; } = new();
 
@@ -104,10 +104,11 @@ public sealed class ConnectionViewModel : ObservableObject
         var p when p.StartsWith("Siemens", StringComparison.OrdinalIgnoreCase) => "S7",
         var p when p.StartsWith("EtherNet", StringComparison.OrdinalIgnoreCase) => "EIP",
         var p when p.StartsWith("Mitsubishi", StringComparison.OrdinalIgnoreCase) => "MELSEC",
+        var p when p.StartsWith("Omron", StringComparison.OrdinalIgnoreCase) => "FINS",
         var p => p.Length > 6 ? p[..6].ToUpperInvariant() : p.ToUpperInvariant()
     };
 
-    /// <summary>Família do protocolo (usada nas cores): Modbus, OpcUa, Mqtt, S7, Eip, Melsec.</summary>
+    /// <summary>Família do protocolo (usada nas cores): Modbus, OpcUa, Mqtt, S7, Eip, Melsec, Fins.</summary>
     public string ProtocolFamily => ProtocolBadge switch
     {
         "MODBUS" or "RTU" => "Modbus",
@@ -116,6 +117,7 @@ public sealed class ConnectionViewModel : ObservableObject
         "S7" => "S7",
         "EIP" => "Eip",
         "MELSEC" => "Melsec",
+        "FINS" => "Fins",
         _ => "Other"
     };
 

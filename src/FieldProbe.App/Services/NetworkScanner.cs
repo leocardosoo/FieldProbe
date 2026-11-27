@@ -8,6 +8,7 @@ using FieldProbe.Drivers.EtherNetIP;
 using FieldProbe.Drivers.Mitsubishi;
 using FieldProbe.Drivers.Modbus;
 using FieldProbe.Drivers.Mqtt;
+using FieldProbe.Drivers.Omron;
 using FieldProbe.Drivers.OpcUa;
 using FieldProbe.Drivers.Siemens;
 
@@ -123,6 +124,9 @@ public sealed class NetworkScanner
     /// <summary>Nome do protocolo na lista do resultado quando a sonda confirma MC Protocol (seguido da porta).</summary>
     private const string McProtocolName = "Mitsubishi MC/SLMP";
 
+    /// <summary>Nome do protocolo quando a sonda confirma FINS/TCP.</summary>
+    private const string FinsProtocolName = "Omron FINS/TCP";
+
     /// <summary>Máximo de conexões TCP abertas ao mesmo tempo (evita sobrecarregar o PC e a rede OT).</summary>
     private const int MaxConcurrentSockets = 200;
 
@@ -205,6 +209,7 @@ public sealed class NetworkScanner
             (102, S7Driver.Protocol),
             (502, ModbusDrivers.TcpName),
             (1883, MqttDriver.Protocol),
+            (9600, OmronDriver.Protocol),
             (5000, MitsubishiDriver.Protocol),
             (5001, MitsubishiDriver.Protocol)
         };
@@ -213,6 +218,7 @@ public sealed class NetworkScanner
             if (!open.Contains(port)) continue;
             // Porta 5000/5001 só vira conexão Mitsubishi se a sonda confirmou MC Protocol (são portas usadas por outros serviços)
             if (protocol == MitsubishiDriver.Protocol && !result.Protocols.Contains($"{McProtocolName} ({port})")) continue;
+            if (protocol == OmronDriver.Protocol && !result.Protocols.Contains(FinsProtocolName)) continue;
             result.SuggestedPort = port;
             result.SuggestedProtocol = protocol;
             break;
@@ -336,9 +342,25 @@ public sealed class NetworkScanner
                 break;
 
             case 9600:
-                r.Protocols.Add("Omron FINS");
+                // Handshake FINS/TCP + modelo da CPU (05 01): não lê nem escreve memória
+                var fins = await Probes.FinsAsync(ip, 9600, timeoutMs, ct).ConfigureAwait(false);
+                if (fins is null)
+                {
+                    r.Protocols.Add("porta 9600 (sem resposta FINS/TCP; pode ser FINS/UDP)");
+                    r.Findings.Add(new(DiagnosticSeverity.Info, "Omron FINS",
+                        "Porta 9600 aberta, mas sem resposta ao FINS/TCP. CLPs Omron que só falam FINS/UDP não aparecem por TCP.",
+                        "Se for um CLP Omron, crie uma conexão Omron FINS com transporte UDP para confirmar."));
+                    break;
+                }
+                r.Protocols.Add(FinsProtocolName);
+                r.Identity.Add(fins.Model is null ? "Omron · FINS/TCP" : $"Omron {fins.Model}");
+                if (fins.Mode is { } finsMode && finsMode != "RUN")
+                    r.Findings.Add(new(DiagnosticSeverity.Warning, "Omron FINS",
+                        $"A CPU está em {finsMode}{(finsMode == "PROGRAM" ? ": o programa não está rodando" : ": aceita alterações online")}.",
+                        "Confirme com a manutenção se esse modo é esperado."));
                 r.Findings.Add(new(DiagnosticSeverity.Warning, "Omron FINS",
-                    "FINS/TCP não autentica clientes.", "Restringir o acesso à porta 9600 por firewall/VLAN."));
+                    "A CPU aceita FINS/TCP na porta 9600 sem autenticação: qualquer PC da rede lê e escreve memória e pode mudar o modo (RUN/PROGRAM).",
+                    "Restringir a porta 9600 por firewall/VLAN e habilitar a proteção por IP da porta FINS/TCP no CX-Programmer."));
                 break;
 
             case 5000:

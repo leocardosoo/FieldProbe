@@ -58,11 +58,36 @@
         <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
             <Setter Property="Padding" Value="4,3" />
         </Style>
+        <Style x:Key="ToolTile" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Margin" Value="0,0,6,6" />
+            <Setter Property="Padding" Value="4,8,4,6" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
         <Style x:Key="ToolboxButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="Margin" Value="0,0,0,6" />
             <Setter Property="Padding" Value="10,7" />
         </Style>
+
+        <!-- Ícones da caixa de elementos (24×24, mesmo traço dos símbolos) -->
+        <DrawingImage x:Key="IconLampada"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="#2DA44E" Geometry="M12,3 A7,7 0 1 1 11.99,3 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M9,19 L15,19 M10,22 L14,22"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconBotao"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="#E6E9ED" Geometry="M3,7 L21,7 L21,17 L3,17 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="#9AA0A6" Geometry="M7,10 L17,10 L17,14 L7,14 Z"></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconValor"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="#FFFFFF" Geometry="M2,6 L22,6 L22,18 L2,18 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M6,9 L10,9 L10,15 L6,15 Z M6,12 L10,12 M13,9 L17,9 L17,15 L13,15 Z M13,12 L17,12"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.2" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M19,15 L19.6,15"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.6" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconSetpoint"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="#FFFFFF" Geometry="M2,7 L15,7 L15,17 L2,17 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M5,10 L5,14"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.2" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M17,12 L22,12 M19.5,9.5 L22,12 L19.5,14.5"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconBarra"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="#E6E9ED" Geometry="M2,9 L22,9 L22,15 L2,15 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="#0F6CBD" Geometry="M2,9 L15,9 L15,15 L2,15 Z"></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M18,7 L18,17"><GeometryDrawing.Pen><Pen Brush="#CF222E" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconTexto"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="Transparent" Geometry="M5,5 L19,5 M12,5 L12,19 M9,19 L15,19"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="2" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconMotor"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="#C4C7CB" Geometry="M3,7 L17,7 L17,17 L3,17 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="#9AA0A6" Geometry="M17,11 L22,11 L22,13 L17,13 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="#9AA0A6" Geometry="M7,4 L12,4 L12,7 L7,7 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="#FFFFFF" Geometry="M10,9.5 A2.5,2.5 0 1 1 9.99,9.5 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.2" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M5,19 L15,19"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconBomba"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="#9AA0A6" Geometry="M2,12 L7,12 L7,16 L2,16 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="#9AA0A6" Geometry="M12,4 L22,4 L22,8 L12,8 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="#C4C7CB" Geometry="M12,7 A7,7 0 1 1 11.99,7 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M12,14 L12,10 M12,14 L15.5,16 M12,14 L8.5,16"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.3" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="#9AA0A6" Geometry="M7,22 L17,22 L15,20 L9,20 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.2" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconValvula"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="#C4C7CB" Geometry="M2,10 L12,15 L2,20 Z M22,10 L12,15 L22,20 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M12,15 L12,7"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="#9AA0A6" Geometry="M6,7 A6,4 0 0 1 18,7 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconTanque"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="#E6E9ED" Geometry="M6,5 Q6,2 12,2 Q18,2 18,5 L18,19 Q18,22 12,22 Q6,22 6,19 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="#0F6CBD" Geometry="M6.8,12 L17.2,12 L17.2,19 Q17.2,21.2 12,21.2 Q6.8,21.2 6.8,19 Z"></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M18,8 L20,8 M18,12 L20,12 M18,16 L20,16"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconEsteira"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="#3E444A" Geometry="M5,8 L19,8 A4,4 0 0 1 19,16 L5,16 A4,4 0 0 1 5,8 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="#C4C7CB" Geometry="M5,10 A2,2 0 1 1 4.99,10 Z M19,10 A2,2 0 1 1 18.99,10 Z"></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M8,12 L16,12"><GeometryDrawing.Pen><Pen Brush="#F2F3F5" Thickness="1.2" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M7,16 L7,21 M17,16 L17,21"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconSinaleiro"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="#E5534B" Geometry="M8,2 L16,2 L16,7 L8,7 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.2" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="#F2C744" Geometry="M8,7 L16,7 L16,12 L8,12 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.2" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="#2DA44E" Geometry="M8,12 L16,12 L16,17 L8,17 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.2" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M12,17 L12,21 M8,22 L16,22"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconTubo"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="#C4C7CB" Geometry="M2,9 L22,9 L22,15 L2,15 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M4,12 L7,12 M10,12 L13,12 M16,12 L19,12"><GeometryDrawing.Pen><Pen Brush="#0F6CBD" Thickness="1.8" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconEstados"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="#1A7F37" Geometry="M2,7 L22,7 L22,17 L2,17 Z"></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M7,12 L10,15 L17,9"><GeometryDrawing.Pen><Pen Brush="#FFFFFF" Thickness="1.8" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconMedidor"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="Transparent" Geometry="M4,17 A8,8 0 1 1 20,17"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="2" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M16.5,12 A5,5 0 0 1 20,17"><GeometryDrawing.Pen><Pen Brush="#CF222E" Thickness="2" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M12,15 L8,9"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.6" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="#3E444A" Geometry="M12,13.5 A1.5,1.5 0 1 1 11.99,13.5 Z"></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconTendencia"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="Transparent" Geometry="M3,3 L3,21 L21,21"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.3" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M5,17 L9,12 L12,14 L16,7 L20,9"><GeometryDrawing.Pen><Pen Brush="#0F6CBD" Thickness="1.8" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M3,6 L21,6"><GeometryDrawing.Pen><Pen Brush="#CF222E" Thickness="1" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconPainel"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="#EEF1F5" Geometry="M3,4 L21,4 L21,20 L3,20 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M3,8 L21,8"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.2" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="Transparent" Geometry="M6,6 L11,6"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.2" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
+        <DrawingImage x:Key="IconImagem"><DrawingImage.Drawing><DrawingGroup><GeometryDrawing Brush="Transparent" Geometry="M0,0 L24,0 L24,24 L0,24 Z" /><GeometryDrawing Brush="#FFFFFF" Geometry="M3,5 L21,5 L21,19 L3,19 Z"><GeometryDrawing.Pen><Pen Brush="#3E444A" Thickness="1.5" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" /></GeometryDrawing.Pen></GeometryDrawing><GeometryDrawing Brush="#9AA0A6" Geometry="M5,17 L10,11 L14,15 L16,13 L19,17 Z"></GeometryDrawing><GeometryDrawing Brush="#F2C744" Geometry="M16,8 A1.8,1.8 0 1 1 15.99,8 Z"></GeometryDrawing></DrawingGroup></DrawingImage.Drawing></DrawingImage>
 
         <!-- Item de cor nos combos: amostra + nome -->
         <DataTemplate x:Key="ColorItem">
@@ -135,65 +160,71 @@
         </Border>
 
         <!-- ===== Elementos (modo edição) ===== -->
-        <Border x:Name="Toolbox" DockPanel.Dock="Left" Width="176" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+        <Border x:Name="Toolbox" DockPanel.Dock="Left" Width="184" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
             <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="12">
                 <TextBlock Text="Elementos" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
-                <Button Style="{StaticResource ToolboxButton}" Tag="Lampada" Click="AddElement_Click" ToolTip="Acende conforme um bit (sensor, motor ligado, falha)">
-                    <StackPanel Orientation="Horizontal"><Ellipse Width="12" Height="12" Fill="#1A7F37" Margin="0,0,8,0" /><TextBlock Text="Lâmpada" /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource ToolboxButton}" Tag="Botao" Click="AddElement_Click" ToolTip="Liga/desliga um bit ou escreve um valor fixo">
-                    <StackPanel Orientation="Horizontal"><Border Width="14" Height="10" CornerRadius="2" BorderBrush="#57606A" BorderThickness="1.5" Margin="0,0,8,0" /><TextBlock Text="Botão" /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource ToolboxButton}" Tag="Valor" Click="AddElement_Click" ToolTip="Mostra um valor grande, com unidade e alarme">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="12,3" FontFamily="Consolas" FontWeight="Bold" Margin="0,0,8,0" /><TextBlock Text="Mostrador" /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource ToolboxButton}" Tag="Setpoint" Click="AddElement_Click" ToolTip="Campo para digitar e enviar um valor">
-                    <StackPanel Orientation="Horizontal"><Border Width="18" Height="12" BorderBrush="#57606A" BorderThickness="1" Margin="0,0,8,0" /><TextBlock Text="Setpoint" /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource ToolboxButton}" Tag="Barra" Click="AddElement_Click" ToolTip="Barra de nível entre um mínimo e um máximo">
-                    <StackPanel Orientation="Horizontal"><Border Width="18" Height="8" Background="#0F6CBD" CornerRadius="2" Margin="0,0,8,0" /><TextBlock Text="Barra" /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource ToolboxButton}" Tag="Texto" Click="AddElement_Click" ToolTip="Título, nome de área, observação">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="Aa" FontWeight="Bold" Margin="0,0,8,0" /><TextBlock Text="Texto" /></StackPanel>
-                </Button>
-                <TextBlock Text="Símbolos" Style="{StaticResource SectionTitle}" Margin="0,10,0,8" />
-                <Button Style="{StaticResource ToolboxButton}" Tag="Motor" Click="AddElement_Click" ToolTip="Gira quando o bit está ligado">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="⚙" FontSize="13" Margin="0,0,8,0" /><TextBlock Text="Motor" /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource ToolboxButton}" Tag="Bomba" Click="AddElement_Click" ToolTip="Rotor gira quando o bit está ligado">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="◔" FontSize="13" Margin="0,0,8,0" /><TextBlock Text="Bomba" /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource ToolboxButton}" Tag="Valvula" Click="AddElement_Click" ToolTip="Aberta (cor) ou fechada conforme o bit">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="⋈" FontSize="13" Margin="0,0,8,0" /><TextBlock Text="Válvula" /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource ToolboxButton}" Tag="Tanque" Click="AddElement_Click" ToolTip="Nível sobe e desce conforme o valor (mín/máx)">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="▥" FontSize="13" Margin="0,0,8,0" /><TextBlock Text="Tanque" /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource ToolboxButton}" Tag="Esteira" Click="AddElement_Click" ToolTip="A correia anda quando o bit está ligado">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="⇉" FontSize="13" Margin="0,0,8,0" /><TextBlock Text="Esteira" /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource ToolboxButton}" Tag="Sinaleiro" Click="AddElement_Click" ToolTip="Torre de luz: verde, amarelo e vermelho (um bit para cada)">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="▮" FontSize="13" Foreground="#CF222E" Margin="0,0,8,0" /><TextBlock Text="Sinaleiro" /></StackPanel>
-                </Button>
-                <TextBlock Text="Supervisão" Style="{StaticResource SectionTitle}" Margin="0,10,0,8" />
-                <Button Style="{StaticResource ToolboxButton}" Tag="Tubo" Click="AddElement_Click" ToolTip="Trecho de cano: o fluido anda quando o bit está ligado. Junte trechos para fazer curvas">
-                    <StackPanel Orientation="Horizontal"><Border Width="18" Height="6" Background="#8C959F" Margin="0,0,8,0" /><TextBlock Text="Tubulação" /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource ToolboxButton}" Tag="Estados" Click="AddElement_Click" ToolTip="Traduz números em texto e cor: 0 = Parada, 1 = Pronta, 2 = Em ciclo, 3 = Falha">
-                    <StackPanel Orientation="Horizontal"><Border Width="18" Height="10" Background="#1A7F37" CornerRadius="2" Margin="0,0,8,0" /><TextBlock Text="Estados" /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource ToolboxButton}" Tag="Medidor" Click="AddElement_Click" ToolTip="Mostrador analógico de ponteiro">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="◠" FontSize="13" Margin="0,0,8,0" /><TextBlock Text="Medidor" /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource ToolboxButton}" Tag="Tendencia" Click="AddElement_Click" ToolTip="Gráfico dos últimos valores">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="〽" FontSize="13" Margin="0,0,8,0" /><TextBlock Text="Tendência" /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource ToolboxButton}" Tag="Painel" Click="AddElement_Click" ToolTip="Retângulo para agrupar uma área (ex.: Estação 20). Use 'Enviar para trás'">
-                    <StackPanel Orientation="Horizontal"><Border Width="18" Height="12" BorderBrush="#57606A" BorderThickness="1" Background="#EEF1F5" Margin="0,0,8,0" /><TextBlock Text="Painel" /></StackPanel>
-                </Button>
-                <Button Style="{StaticResource ToolboxButton}" Tag="Imagem" Click="AddElement_Click" ToolTip="Logo, ícone ou foto (PNG/JPG), guardada no projeto">
-                    <StackPanel Orientation="Horizontal"><TextBlock Text="🖼" FontSize="12" Margin="0,0,8,0" /><TextBlock Text="Imagem" /></StackPanel>
-                </Button>
+                <UniformGrid Columns="2">
+                    <Button Style="{StaticResource ToolTile}" Tag="Lampada" Click="AddElement_Click" ToolTip="Acende conforme um bit (sensor, motor ligado, falha)">
+                        <StackPanel><Image Source="{StaticResource IconLampada}" Width="26" Height="26" /><TextBlock Text="Lâmpada" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolTile}" Tag="Botao" Click="AddElement_Click" ToolTip="Liga/desliga um bit ou escreve um valor fixo">
+                        <StackPanel><Image Source="{StaticResource IconBotao}" Width="26" Height="26" /><TextBlock Text="Botão" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolTile}" Tag="Valor" Click="AddElement_Click" ToolTip="Mostra um valor grande, com unidade, tendência e alarme">
+                        <StackPanel><Image Source="{StaticResource IconValor}" Width="26" Height="26" /><TextBlock Text="Mostrador" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolTile}" Tag="Setpoint" Click="AddElement_Click" ToolTip="Campo para digitar e enviar um valor">
+                        <StackPanel><Image Source="{StaticResource IconSetpoint}" Width="26" Height="26" /><TextBlock Text="Setpoint" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolTile}" Tag="Barra" Click="AddElement_Click" ToolTip="Barra de nível com régua e marcas de alarme">
+                        <StackPanel><Image Source="{StaticResource IconBarra}" Width="26" Height="26" /><TextBlock Text="Barra" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolTile}" Tag="Texto" Click="AddElement_Click" ToolTip="Título, nome de área, observação">
+                        <StackPanel><Image Source="{StaticResource IconTexto}" Width="26" Height="26" /><TextBlock Text="Texto" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                </UniformGrid>
+                <TextBlock Text="Símbolos" Style="{StaticResource SectionTitle}" Margin="0,8,0,8" />
+                <UniformGrid Columns="2">
+                    <Button Style="{StaticResource ToolTile}" Tag="Motor" Click="AddElement_Click" ToolTip="Gira quando o bit está ligado">
+                        <StackPanel><Image Source="{StaticResource IconMotor}" Width="26" Height="26" /><TextBlock Text="Motor" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolTile}" Tag="Bomba" Click="AddElement_Click" ToolTip="Rotor gira quando o bit está ligado">
+                        <StackPanel><Image Source="{StaticResource IconBomba}" Width="26" Height="26" /><TextBlock Text="Bomba" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolTile}" Tag="Valvula" Click="AddElement_Click" ToolTip="Aberta ou fechada conforme o bit">
+                        <StackPanel><Image Source="{StaticResource IconValvula}" Width="26" Height="26" /><TextBlock Text="Válvula" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolTile}" Tag="Tanque" Click="AddElement_Click" ToolTip="Nível com régua e limite de alarme (mín/máx)">
+                        <StackPanel><Image Source="{StaticResource IconTanque}" Width="26" Height="26" /><TextBlock Text="Tanque" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolTile}" Tag="Esteira" Click="AddElement_Click" ToolTip="A correia anda quando o bit está ligado">
+                        <StackPanel><Image Source="{StaticResource IconEsteira}" Width="26" Height="26" /><TextBlock Text="Esteira" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolTile}" Tag="Sinaleiro" Click="AddElement_Click" ToolTip="Torre de luz: verde, amarelo e vermelho (um bit para cada)">
+                        <StackPanel><Image Source="{StaticResource IconSinaleiro}" Width="26" Height="26" /><TextBlock Text="Sinaleiro" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                </UniformGrid>
+                <TextBlock Text="Supervisão" Style="{StaticResource SectionTitle}" Margin="0,8,0,8" />
+                <UniformGrid Columns="2">
+                    <Button Style="{StaticResource ToolTile}" Tag="Tubo" Click="AddElement_Click" ToolTip="Trecho de cano: o fluido anda quando o bit está ligado. Junte trechos para fazer curvas">
+                        <StackPanel><Image Source="{StaticResource IconTubo}" Width="26" Height="26" /><TextBlock Text="Tubulação" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolTile}" Tag="Estados" Click="AddElement_Click" ToolTip="Traduz números em texto e cor: 0 = Parada, 1 = Pronta, 2 = Em ciclo, 3 = Falha">
+                        <StackPanel><Image Source="{StaticResource IconEstados}" Width="26" Height="26" /><TextBlock Text="Estados" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolTile}" Tag="Medidor" Click="AddElement_Click" ToolTip="Mostrador de ponteiro com escala e faixas de alarme">
+                        <StackPanel><Image Source="{StaticResource IconMedidor}" Width="26" Height="26" /><TextBlock Text="Medidor" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolTile}" Tag="Tendencia" Click="AddElement_Click" ToolTip="Gráfico dos últimos valores com linha de alarme">
+                        <StackPanel><Image Source="{StaticResource IconTendencia}" Width="26" Height="26" /><TextBlock Text="Tendência" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolTile}" Tag="Painel" Click="AddElement_Click" ToolTip="Retângulo para agrupar uma área (ex.: Estação 20). Use 'Enviar para trás'">
+                        <StackPanel><Image Source="{StaticResource IconPainel}" Width="26" Height="26" /><TextBlock Text="Painel" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolTile}" Tag="Imagem" Click="AddElement_Click" ToolTip="Logo, ícone ou foto (PNG/JPG), guardada no projeto">
+                        <StackPanel><Image Source="{StaticResource IconImagem}" Width="26" Height="26" /><TextBlock Text="Imagem" FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,0" /></StackPanel>
+                    </Button>
+                </UniformGrid>
                 <TextBlock Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,12,0,0" FontSize="11.5"
                            Text="Clique para adicionar. Arraste para mover; arraste no fundo para selecionar vários; Ctrl+clique soma à seleção. Canto azul = tamanho. Ctrl+Z desfaz · Ctrl+C/V copia · Ctrl+D duplica · Del apaga · setas movem 1 px (Shift: 10)." />
             </StackPanel></ScrollViewer>
@@ -763,83 +794,159 @@
                                         </Grid>
                                     </Border>
 
-                                    <!-- Símbolos industriais -->
+                                    <!-- Símbolos industriais (traço de P&ID; cor pelo estado, selo de estado embaixo) -->
                                     <DockPanel Visibility="{Binding IsSymbol, Converter={StaticResource B2V}}">
-                                        <TextBlock DockPanel.Dock="Bottom" Text="{Binding Text}" FontSize="{Binding FontSize}" FontWeight="SemiBold"
+                                        <Border DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="0,3,0,0" Padding="7,1" CornerRadius="3"
+                                                Background="{Binding SymbolChipBrush}" Visibility="{Binding ShowStateChip, Converter={StaticResource B2V}}">
+                                            <TextBlock Text="{Binding SymbolStateText}" Foreground="{Binding SymbolChipForeground}" FontSize="9.5" FontWeight="Bold" />
+                                        </Border>
+                                        <TextBlock DockPanel.Dock="Bottom" Text="{Binding Text}" FontSize="{Binding FontSize}" FontWeight="SemiBold" Foreground="#24292F"
                                                    HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
                                                    Visibility="{Binding HasCaption, Converter={StaticResource B2V}}" />
                                         <Grid>
-                                            <!-- Motor -->
+                                            <!-- Motor: carcaça aletada, caixa de ligação, eixo e base; o rotor gira ligado -->
                                             <Viewbox Visibility="{Binding IsMotor, Converter={StaticResource B2V}}">
-                                                <Canvas Width="100" Height="100">
-                                                    <Rectangle Canvas.Left="36" Canvas.Top="4" Width="28" Height="14" RadiusX="2" RadiusY="2" Fill="#57606A" />
-                                                    <Rectangle Canvas.Left="2" Canvas.Top="48" Width="12" Height="12" Fill="#57606A" />
-                                                    <Ellipse Canvas.Left="10" Canvas.Top="14" Width="80" Height="80" Fill="{Binding SymbolBrush}" Stroke="#24292F" StrokeThickness="3" />
-                                                    <Path x:Name="MotorRotor" Canvas.Left="10" Canvas.Top="14" Width="80" Height="80" RenderTransformOrigin="0.5,0.5"
-                                                          Fill="White" Opacity="0.6"
-                                                          Data="M40,40 L40,10 A30,30 0 0 1 61,19 Z M40,40 L66,55 A30,30 0 0 1 45,70 Z M40,40 L14,55 A30,30 0 0 1 19,25 Z">
+                                                <Canvas Width="100" Height="86">
+                                                    <Rectangle Canvas.Left="34" Canvas.Top="4" Width="26" Height="12" RadiusX="2" RadiusY="2" Fill="#9AA0A6" Stroke="#3E444A" StrokeThickness="1.5" />
+                                                    <Path Data="M16,82 L26,70 L68,70 L78,82 Z" Fill="#9AA0A6" Stroke="#3E444A" StrokeThickness="1.5" StrokeLineJoin="Round" />
+                                                    <Rectangle Canvas.Left="80" Canvas.Top="39" Width="16" Height="8" Fill="#9AA0A6" Stroke="#3E444A" StrokeThickness="1.5" />
+                                                    <Rectangle Canvas.Left="4" Canvas.Top="22" Width="12" Height="42" RadiusX="3" RadiusY="3" Fill="#9AA0A6" Stroke="#3E444A" StrokeThickness="1.5" />
+                                                    <Rectangle Canvas.Left="12" Canvas.Top="16" Width="68" Height="54" RadiusX="6" RadiusY="6" Fill="{Binding SymbolBrush}" Stroke="#24292F" StrokeThickness="2.5" />
+                                                    <Path Data="M18,25 L74,25 M18,33 L74,33 M18,53 L74,53 M18,61 L74,61" Stroke="#24292F" StrokeThickness="1.2" Opacity="0.35" />
+                                                    <Ellipse Canvas.Left="33" Canvas.Top="30" Width="26" Height="26" Fill="White" Stroke="#24292F" StrokeThickness="2" />
+                                                    <Path x:Name="MotorRotor" Canvas.Left="33" Canvas.Top="30" Width="26" Height="26" RenderTransformOrigin="0.5,0.5" Fill="#3E444A"
+                                                          Data="M13,13 L13,3 A10,10 0 0 1 21.66,8 Z M13,13 L21.66,18 A10,10 0 0 1 13,23 Z M13,13 L4.34,18 A10,10 0 0 1 4.34,8 Z">
                                                         <Path.RenderTransform><RotateTransform /></Path.RenderTransform>
                                                     </Path>
-                                                    <Ellipse Canvas.Left="42" Canvas.Top="46" Width="16" Height="16" Fill="#24292F" />
+                                                    <Ellipse Canvas.Left="43" Canvas.Top="40" Width="6" Height="6" Fill="#24292F" />
                                                 </Canvas>
                                             </Viewbox>
 
-                                            <!-- Bomba -->
+                                            <!-- Bomba centrífuga (P&ID): sucção à esquerda, recalque tangente em cima; o rotor gira ligado -->
                                             <Viewbox Visibility="{Binding IsPump, Converter={StaticResource B2V}}">
-                                                <Canvas Width="100" Height="100">
-                                                    <Path Data="M48,12 L94,12 L94,34 L78,34 Z" Fill="#57606A" />
-                                                    <Rectangle Canvas.Left="18" Canvas.Top="86" Width="60" Height="9" Fill="#57606A" />
-                                                    <Ellipse Canvas.Left="10" Canvas.Top="14" Width="76" Height="76" Fill="{Binding SymbolBrush}" Stroke="#24292F" StrokeThickness="3" />
-                                                    <Path x:Name="PumpRotor" Canvas.Left="10" Canvas.Top="14" Width="76" Height="76" RenderTransformOrigin="0.5,0.5"
-                                                          Stroke="White" StrokeThickness="7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.85"
-                                                          Data="M38,38 L38,12 M38,38 L60.5,51 M38,38 L15.5,51">
+                                                <Canvas Width="100" Height="94">
+                                                    <Rectangle Canvas.Left="4" Canvas.Top="44" Width="22" Height="14" Fill="#9AA0A6" Stroke="#3E444A" StrokeThickness="1.5" />
+                                                    <Rectangle Canvas.Left="2" Canvas.Top="40" Width="5" Height="22" Fill="#6E7781" />
+                                                    <Rectangle Canvas.Left="50" Canvas.Top="14" Width="42" Height="14" Fill="#9AA0A6" Stroke="#3E444A" StrokeThickness="1.5" />
+                                                    <Rectangle Canvas.Left="90" Canvas.Top="10" Width="5" Height="22" Fill="#6E7781" />
+                                                    <Path Data="M24,90 L34,76 L66,76 L76,90 Z" Fill="#9AA0A6" Stroke="#3E444A" StrokeThickness="1.5" StrokeLineJoin="Round" />
+                                                    <Ellipse Canvas.Left="20" Canvas.Top="21" Width="60" Height="60" Fill="{Binding SymbolBrush}" Stroke="#24292F" StrokeThickness="2.5" />
+                                                    <Ellipse Canvas.Left="30" Canvas.Top="31" Width="40" Height="40" Fill="White" Opacity="0.55" />
+                                                    <Path x:Name="PumpRotor" Canvas.Left="30" Canvas.Top="31" Width="40" Height="40" RenderTransformOrigin="0.5,0.5"
+                                                          Stroke="#24292F" StrokeThickness="3.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                          Data="M20,20 Q27,9 20,3 M20,20 Q31,27 37,20 M20,20 Q13,31 20,37 M20,20 Q9,13 3,20">
                                                         <Path.RenderTransform><RotateTransform /></Path.RenderTransform>
                                                     </Path>
-                                                    <Ellipse Canvas.Left="41" Canvas.Top="45" Width="14" Height="14" Fill="#24292F" />
+                                                    <Ellipse Canvas.Left="45" Canvas.Top="46" Width="10" Height="10" Fill="#24292F" />
                                                 </Canvas>
                                             </Viewbox>
 
-                                            <!-- Válvula -->
+                                            <!-- Válvula gaveta com atuador pneumático -->
                                             <Viewbox Visibility="{Binding IsValve, Converter={StaticResource B2V}}">
-                                                <Canvas Width="100" Height="90">
-                                                    <Rectangle Canvas.Left="32" Canvas.Top="4" Width="36" Height="18" RadiusX="3" RadiusY="3" Fill="#57606A" />
-                                                    <Line X1="50" Y1="22" X2="50" Y2="48" Stroke="#24292F" StrokeThickness="4" />
-                                                    <Path Data="M6,30 L50,54 L6,78 Z M94,30 L50,54 L94,78 Z" Fill="{Binding SymbolBrush}"
-                                                          Stroke="#24292F" StrokeThickness="3" StrokeLineJoin="Round" />
+                                                <Canvas Width="100" Height="82">
+                                                    <Path Data="M26,26 A24,18 0 0 1 74,26 Z" Fill="#9AA0A6" Stroke="#3E444A" StrokeThickness="1.5" StrokeLineJoin="Round" />
+                                                    <Rectangle Canvas.Left="24" Canvas.Top="25" Width="52" Height="4" Fill="#6E7781" />
+                                                    <Line X1="50" Y1="29" X2="50" Y2="58" Stroke="#3E444A" StrokeThickness="3" />
+                                                    <Rectangle Canvas.Left="2" Canvas.Top="40" Width="5" Height="36" Fill="#6E7781" />
+                                                    <Rectangle Canvas.Left="93" Canvas.Top="40" Width="5" Height="36" Fill="#6E7781" />
+                                                    <Path Data="M7,40 L50,58 L7,76 Z M93,40 L50,58 L93,76 Z" Fill="{Binding SymbolBrush}"
+                                                          Stroke="#24292F" StrokeThickness="2.5" StrokeLineJoin="Round" />
+                                                    <Ellipse Canvas.Left="46" Canvas.Top="54" Width="8" Height="8" Fill="#24292F" />
                                                 </Canvas>
                                             </Viewbox>
 
-                                            <!-- Tanque -->
-                                            <Border Visibility="{Binding IsTank, Converter={StaticResource B2V}}" Margin="10,2" CornerRadius="16"
-                                                    BorderBrush="#24292F" BorderThickness="3" Background="#F6F8FA">
-                                                <Grid ClipToBounds="True">
-                                                    <Rectangle Fill="{Binding LiquidBrush}" Opacity="0.85" RenderTransformOrigin="0.5,1"
-                                                               RenderTransform="{Binding TankFraction, Converter={StaticResource FractionScaleY}}" />
-                                                    <Border Background="#E6FFFFFF" CornerRadius="3" Padding="6,1" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                        <TextBlock FontWeight="Bold" Foreground="{Binding ValueForeground}">
-                                                            <Run Text="{Binding DisplayText, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding UnitText, Mode=OneWay}" />
-                                                        </TextBlock>
-                                                    </Border>
+                                            <!-- Tanque: vaso com régua, marca do limite de alarme e valor -->
+                                            <Grid Visibility="{Binding IsTank, Converter={StaticResource B2V}}" Margin="4,2">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Rectangle Width="16" Height="8" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,-2,0,0" Fill="#9AA0A6" Stroke="#3E444A" StrokeThickness="1.2" />
+                                                <Rectangle Width="16" Height="8" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,-2" Fill="#9AA0A6" Stroke="#3E444A" StrokeThickness="1.2" />
+                                                <Border Margin="0,5" CornerRadius="18" BorderBrush="#24292F" BorderThickness="2.5" Background="{Binding TrackBrush}">
+                                                    <Grid ClipToBounds="True">
+                                                        <Rectangle Fill="{Binding LiquidBrush}" Opacity="0.85" RenderTransformOrigin="0.5,1"
+                                                                   RenderTransform="{Binding TankFraction, Converter={StaticResource FractionScaleY}}" />
+                                                        <!-- marcas de 25, 50 e 75% -->
+                                                        <UniformGrid Rows="4" IsHitTestVisible="False">
+                                                            <Border />
+                                                            <Border Width="12" HorizontalAlignment="Right" BorderBrush="#57606A" BorderThickness="0,1,0,0" />
+                                                            <Border Width="18" HorizontalAlignment="Right" BorderBrush="#57606A" BorderThickness="0,1,0,0" />
+                                                            <Border Width="12" HorizontalAlignment="Right" BorderBrush="#57606A" BorderThickness="0,1,0,0" />
+                                                        </UniformGrid>
+                                                        <!-- limite de alarme alto -->
+                                                        <Grid IsHitTestVisible="False" Visibility="{Binding HasHighMarker, Converter={StaticResource B2V}}">
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="{Binding HighAfter}" />
+                                                                <RowDefinition Height="{Binding HighBefore}" />
+                                                            </Grid.RowDefinitions>
+                                                            <Border VerticalAlignment="Bottom" BorderBrush="#CF222E" BorderThickness="0,0,0,2" ToolTip="Limite de alarme alto" />
+                                                        </Grid>
+                                                        <Border Background="#E6FFFFFF" CornerRadius="3" Padding="6,1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                BorderBrush="#AFB8C1" BorderThickness="1">
+                                                            <TextBlock FontWeight="Bold" Foreground="{Binding ValueForeground}">
+                                                                <Run Text="{Binding DisplayText, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding UnitText, Mode=OneWay}" FontWeight="Normal" />
+                                                            </TextBlock>
+                                                        </Border>
+                                                    </Grid>
+                                                </Border>
+                                                <Grid Grid.Column="1" Margin="4,12,0,12">
+                                                    <TextBlock Text="{Binding MaxText}" FontSize="9" Foreground="#6E7781" VerticalAlignment="Top" />
+                                                    <TextBlock Text="{Binding MidText}" FontSize="9" Foreground="#6E7781" VerticalAlignment="Center" />
+                                                    <TextBlock Text="{Binding MinText}" FontSize="9" Foreground="#6E7781" VerticalAlignment="Bottom" />
                                                 </Grid>
-                                            </Border>
-
-                                            <!-- Esteira -->
-                                            <Grid Visibility="{Binding IsConveyor, Converter={StaticResource B2V}}" Margin="2,6">
-                                                <Rectangle RadiusX="18" RadiusY="18" Fill="#3D444D" Stroke="#24292F" StrokeThickness="2" />
-                                                <Rectangle x:Name="BeltPath" Margin="9" RadiusX="12" RadiusY="12" Stroke="{Binding SymbolBrush}" StrokeThickness="4" StrokeDashArray="2 2" />
-                                                <Ellipse HorizontalAlignment="Left" VerticalAlignment="Center" Width="22" Height="22" Margin="6,0"
-                                                         Fill="#8C959F" Stroke="#24292F" StrokeThickness="2" />
-                                                <Ellipse HorizontalAlignment="Right" VerticalAlignment="Center" Width="22" Height="22" Margin="6,0"
-                                                         Fill="#8C959F" Stroke="#24292F" StrokeThickness="2" />
                                             </Grid>
 
-                                            <!-- Sinaleiro (torre de luz) -->
+                                            <!-- Esteira: correia, tambores, roletes e pés; a correia anda ligada -->
+                                            <Grid Visibility="{Binding IsConveyor, Converter={StaticResource B2V}}" Margin="2,4">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="*" />
+                                                    <RowDefinition Height="10" />
+                                                </Grid.RowDefinitions>
+                                                <Grid>
+                                                    <Rectangle RadiusX="16" RadiusY="16" Fill="#3E444A" Stroke="#24292F" StrokeThickness="2" />
+                                                    <Rectangle x:Name="BeltPath" Margin="7" RadiusX="11" RadiusY="11" Stroke="{Binding BeltBrush}" StrokeThickness="3" StrokeDashArray="3 2" />
+                                                    <UniformGrid Columns="5" Margin="40,0" VerticalAlignment="Center" IsHitTestVisible="False">
+                                                        <Ellipse Width="8" Height="8" Fill="#9AA0A6" />
+                                                        <Ellipse Width="8" Height="8" Fill="#9AA0A6" />
+                                                        <Ellipse Width="8" Height="8" Fill="#9AA0A6" />
+                                                        <Ellipse Width="8" Height="8" Fill="#9AA0A6" />
+                                                        <Ellipse Width="8" Height="8" Fill="#9AA0A6" />
+                                                    </UniformGrid>
+                                                    <Grid HorizontalAlignment="Left" VerticalAlignment="Center" Width="26" Height="26" Margin="5,0">
+                                                        <Ellipse Fill="#C4C7CB" Stroke="#24292F" StrokeThickness="2" />
+                                                        <Ellipse Width="7" Height="7" Fill="#24292F" />
+                                                    </Grid>
+                                                    <Grid HorizontalAlignment="Right" VerticalAlignment="Center" Width="26" Height="26" Margin="5,0">
+                                                        <Ellipse Fill="#C4C7CB" Stroke="#24292F" StrokeThickness="2" />
+                                                        <Ellipse Width="7" Height="7" Fill="#24292F" />
+                                                    </Grid>
+                                                </Grid>
+                                                <Grid Grid.Row="1">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Rectangle Width="6" HorizontalAlignment="Center" Fill="#6E7781" />
+                                                    <Rectangle Grid.Column="1" Width="6" HorizontalAlignment="Center" Fill="#6E7781" />
+                                                </Grid>
+                                            </Grid>
+
+                                            <!-- Sinaleiro (torre de luz): tampa, 3 lentes com brilho, haste e base -->
                                             <Viewbox Visibility="{Binding IsStackLight, Converter={StaticResource B2V}}">
                                                 <StackPanel Width="40">
-                                                    <Border Height="26" CornerRadius="5,5,2,2" Background="{Binding StackRed}" BorderBrush="#24292F" BorderThickness="2" />
-                                                    <Border Height="26" Margin="0,2,0,0" CornerRadius="2" Background="{Binding StackYellow}" BorderBrush="#24292F" BorderThickness="2" />
-                                                    <Border Height="26" Margin="0,2,0,0" CornerRadius="2" Background="{Binding StackGreen}" BorderBrush="#24292F" BorderThickness="2" />
-                                                    <Rectangle Width="8" Height="22" Fill="#57606A" HorizontalAlignment="Center" />
+                                                    <Border Width="30" Height="6" CornerRadius="4,4,0,0" Background="#3E444A" />
+                                                    <Border Height="26" CornerRadius="3" Background="{Binding StackRed}" BorderBrush="#24292F" BorderThickness="2">
+                                                        <Rectangle Width="5" Margin="5,4" HorizontalAlignment="Left" RadiusX="2" RadiusY="2" Fill="White" Opacity="0.3" />
+                                                    </Border>
+                                                    <Border Height="26" Margin="0,1,0,0" CornerRadius="3" Background="{Binding StackYellow}" BorderBrush="#24292F" BorderThickness="2">
+                                                        <Rectangle Width="5" Margin="5,4" HorizontalAlignment="Left" RadiusX="2" RadiusY="2" Fill="White" Opacity="0.3" />
+                                                    </Border>
+                                                    <Border Height="26" Margin="0,1,0,0" CornerRadius="3" Background="{Binding StackGreen}" BorderBrush="#24292F" BorderThickness="2">
+                                                        <Rectangle Width="5" Margin="5,4" HorizontalAlignment="Left" RadiusX="2" RadiusY="2" Fill="White" Opacity="0.3" />
+                                                    </Border>
+                                                    <Border Width="30" Height="5" Background="#3E444A" />
+                                                    <Rectangle Width="7" Height="20" Fill="#6E7781" HorizontalAlignment="Center" />
                                                     <Rectangle Width="30" Height="6" RadiusX="2" RadiusY="2" Fill="#24292F" HorizontalAlignment="Center" />
                                                 </StackPanel>
                                             </Viewbox>

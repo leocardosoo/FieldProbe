@@ -244,7 +244,8 @@ public sealed class HmiElementViewModel : ObservableObject
     {
         get => Data.OnColor;
         set => Update(Data.OnColor, value ?? "Verde", v => Data.OnColor = v, nameof(OnColor), nameof(LampBrush), nameof(SymbolBrush),
-            nameof(LiquidBrush), nameof(ButtonBrush), nameof(ButtonForeground), nameof(PanelBrush), nameof(FlowBrush));
+            nameof(LiquidBrush), nameof(ButtonBrush), nameof(ButtonForeground), nameof(PanelBrush), nameof(FlowBrush),
+            nameof(SymbolChipBrush), nameof(SymbolChipForeground), nameof(BeltBrush));
     }
 
     public string OffColor
@@ -371,7 +372,7 @@ public sealed class HmiElementViewModel : ObservableObject
         set
         {
             if (!Set(ref _isEditMode, value)) return;
-            foreach (var name in new[] { nameof(IsRunMode), nameof(IsAnimating), nameof(IsFlowingForward), nameof(IsFlowingReverse), nameof(IsBlinking), nameof(IsHiddenByCondition), nameof(IsClickable), nameof(ShowBadOverlay) })
+            foreach (var name in new[] { nameof(IsRunMode), nameof(IsAnimating), nameof(IsFlowingForward), nameof(IsFlowingReverse), nameof(IsBlinking), nameof(IsHiddenByCondition), nameof(IsClickable), nameof(ShowBadOverlay), nameof(SymbolStateText) })
                 OnPropertyChanged(name);
         }
     }
@@ -405,7 +406,8 @@ public sealed class HmiElementViewModel : ObservableObject
             foreach (var name in new[]
                      {
                          nameof(LampBrush), nameof(SymbolBrush), nameof(LiquidBrush), nameof(FlowBrush), nameof(PanelBrush), nameof(BarBrush),
-                         nameof(TrendBrush), nameof(ButtonBrush), nameof(ButtonForeground), nameof(GaugeTrackBrush), nameof(TrackBrush)
+                         nameof(TrendBrush), nameof(ButtonBrush), nameof(ButtonForeground), nameof(GaugeTrackBrush), nameof(TrackBrush),
+                         nameof(SymbolChipBrush), nameof(SymbolChipForeground), nameof(BeltBrush)
                      })
                 OnPropertyChanged(name);
         }
@@ -470,6 +472,23 @@ public sealed class HmiElementViewModel : ObservableObject
         : _isIsa ? "#C4C7CB" : IsWinCC ? "#DCDFE3" : "#F6F8FA";
 
     public string ButtonForeground => ButtonMode == HmiButtonMode.Alternar && !IsBad && IsOn && (_isIsa || OnColor != "Branco" && OnColor != "Amarelo") ? "#FFFFFF" : "#1F2328";
+
+    // ===================== Selo de estado dos símbolos =====================
+
+    /// <summary>Motor, bomba, válvula e esteira mostram um selo de estado embaixo (LIGADO, DESLIGADO, ABERTA...).</summary>
+    public bool ShowStateChip => Kind is HmiKind.Motor or HmiKind.Bomba or HmiKind.Valvula or HmiKind.Esteira;
+
+    public string SymbolStateText => IsBad
+        ? (IsRunMode && IsBound ? "SEM SINAL" : "—")
+        : Kind == HmiKind.Valvula ? (IsOn ? "ABERTA" : "FECHADA") : IsOn ? "LIGADO" : "DESLIGADO";
+
+    /// <summary>ISA-101: selo cinza escuro quando ligado; nos outros visuais, a cor de "ligado" escolhida.</summary>
+    public string SymbolChipBrush => IsBad ? "#D0D7DE" : IsOn ? (_isIsa ? "#3E444A" : HmiColors.Hex(OnColor)) : _isIsa ? "#C4C7CB" : "#E6E9ED";
+
+    /// <summary>Correia da esteira: tracejado claro andando quando ligada, cinza parada.</summary>
+    public string BeltBrush => IsBad || !IsOn ? "#8C959F" : _isIsa ? "#F2F3F5" : HmiColors.Hex(OnColor);
+
+    public string SymbolChipForeground => IsBad || !IsOn ? "#3E444A" : !_isIsa && OnColor is "Branco" or "Amarelo" ? "#1F2328" : "#FFFFFF";
 
     /// <summary>Selo de alarme ("ALARME ALTO"), vazio sem alarme.</summary>
     public string AlarmBadgeText => _alarmText.Length > 0 ? $"ALARME {_alarmText}" : string.Empty;
@@ -644,7 +663,8 @@ public sealed class HmiElementViewModel : ObservableObject
                      nameof(StatusTip), nameof(IsAnimating), nameof(IsFlowingForward), nameof(IsFlowingReverse), nameof(IsBlinking),
                      nameof(Fraction), nameof(TankFraction), nameof(NeedleAngle), nameof(StackGreen), nameof(StackYellow), nameof(StackRed),
                      nameof(UnitText), nameof(StateText), nameof(StateBrush), nameof(QualityText),
-                     nameof(AlarmBadgeText), nameof(TrendArrow), nameof(ShowBadOverlay)
+                     nameof(AlarmBadgeText), nameof(TrendArrow), nameof(ShowBadOverlay),
+                     nameof(SymbolStateText), nameof(SymbolChipBrush), nameof(SymbolChipForeground), nameof(BeltBrush)
                  })
             OnPropertyChanged(name);
     }

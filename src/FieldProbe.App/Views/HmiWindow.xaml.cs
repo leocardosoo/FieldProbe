@@ -72,7 +72,8 @@ public partial class HmiWindow : Window
         ThemeBox.ItemsSource = new Dictionary<HmiTheme, string>
         {
             [HmiTheme.Claro] = "Claro (moderno)",
-            [HmiTheme.WinCC] = "Industrial"
+            [HmiTheme.WinCC] = "Industrial",
+            [HmiTheme.AltoDesempenho] = "Alto desempenho (ISA-101)"
         };
         ImageFitBox.ItemsSource = Enum.GetValues<HmiImageFit>();
         BlinkBox.ItemsSource = new Dictionary<HmiBlink, string>
@@ -177,7 +178,12 @@ public partial class HmiWindow : Window
 
     private HmiElementViewModel Wrap(HmiElementData data)
     {
-        var vm = new HmiElementViewModel(data) { IsEditMode = !_running, IsWinCC = _screen?.Theme == HmiTheme.WinCC };
+        var vm = new HmiElementViewModel(data)
+        {
+            IsEditMode = !_running,
+            IsWinCC = _screen?.Theme is HmiTheme.WinCC or HmiTheme.AltoDesempenho,
+            IsIsa = _screen?.Theme == HmiTheme.AltoDesempenho
+        };
         vm.Changed += (_, _) => OnElementChanged();
         return vm;
     }
@@ -236,12 +242,19 @@ public partial class HmiWindow : Window
 
     private void ApplyTheme()
     {
-        var wincc = _screen?.Theme == HmiTheme.WinCC;
-        foreach (var vm in _elements) vm.IsWinCC = wincc;
-        Surface.Background = ToBrush(wincc ? "#C9D0D7" : "#FFFFFF");
-        SurfaceFrame.BorderBrush = ToBrush(wincc ? "#5C6670" : "#D0D7DE");
-        RunHeader.Background = ToBrush(wincc ? "#1E2D3D" : "#24292F");
-        HeaderTitle.FontFamily = new FontFamily(wincc ? "Arial" : "Segoe UI");
+        var theme = _screen?.Theme ?? HmiTheme.Claro;
+        var isa = theme == HmiTheme.AltoDesempenho;
+        var industrial = theme is HmiTheme.WinCC or HmiTheme.AltoDesempenho;
+        foreach (var vm in _elements)
+        {
+            vm.IsWinCC = industrial;
+            vm.IsIsa = isa;
+        }
+        // ISA-101: fundo cinza neutro (nem branco nem escuro) para a cor do alarme saltar aos olhos
+        Surface.Background = ToBrush(isa ? "#D9DBDE" : industrial ? "#C9D0D7" : "#FFFFFF");
+        SurfaceFrame.BorderBrush = ToBrush(isa ? "#9AA0A6" : industrial ? "#5C6670" : "#D0D7DE");
+        RunHeader.Background = ToBrush(isa ? "#4A5056" : industrial ? "#1E2D3D" : "#24292F");
+        HeaderTitle.FontFamily = new FontFamily(industrial ? "Arial" : "Segoe UI");
     }
 
     private static SolidColorBrush ToBrush(string hex) => (SolidColorBrush)new BrushConverter().ConvertFromString(hex)!;
@@ -415,7 +428,12 @@ public partial class HmiWindow : Window
             SurfaceScroll.Padding = new Thickness(0);
             SurfaceScroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
             SurfaceScroll.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
-            Background = ToBrush(_screen?.Theme == HmiTheme.WinCC ? "#5C6670" : "#1F2328");
+            Background = ToBrush(_screen?.Theme switch
+            {
+                HmiTheme.WinCC => "#5C6670",
+                HmiTheme.AltoDesempenho => "#8E949A",
+                _ => "#1F2328"
+            });
             ShowFullscreenHint();
         }
         else

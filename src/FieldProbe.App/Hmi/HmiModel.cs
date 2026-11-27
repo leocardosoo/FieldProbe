@@ -52,7 +52,13 @@ public enum HmiTheme
     Claro,
 
     /// <summary>Estilo SCADA/WinCC: fundo cinza industrial, painéis retos, campos de valor brancos e fonte Arial.</summary>
-    WinCC
+    WinCC,
+
+    /// <summary>
+    /// High Performance HMI (ISA-101): tudo em tons de cinza e cor só no que está anormal (alarme, falha),
+    /// para o operador achar o problema de relance.
+    /// </summary>
+    AltoDesempenho
 }
 
 /// <summary>Como a imagem de fundo ocupa a tela.</summary>

@@ -12,6 +12,40 @@
         <hmi:NeedleRotateConverter x:Key="NeedleRotate" />
         <hmi:FractionScaleYConverter x:Key="FractionScaleY" />
 
+        <!-- Hachura cinza de elemento sem comunicação (modo Executar), como nos SCADAs -->
+        <DrawingBrush x:Key="BadHatch" TileMode="Tile" Viewport="0,0,8,8" ViewportUnits="Absolute">
+            <DrawingBrush.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Brush="#66D0D7DE">
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="0,0,8,8" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing>
+                        <GeometryDrawing.Pen>
+                            <Pen Brush="#8C959F" Thickness="1.2" />
+                        </GeometryDrawing.Pen>
+                        <GeometryDrawing.Geometry>
+                            <LineGeometry StartPoint="0,8" EndPoint="8,0" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingBrush.Drawing>
+        </DrawingBrush>
+
+        <!-- Selo "ALARME ALTO/BAIXO" dos mostradores -->
+        <Style x:Key="AlarmBadge" TargetType="Border">
+            <Setter Property="Background" Value="#CF222E" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="6,1" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+        <Style x:Key="AlarmBadgeText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="10" />
+        </Style>
+
         <Style x:Key="PropLabel" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
             <Setter Property="Margin" Value="0,6,0,2" />
@@ -517,6 +551,11 @@
                                                         <Setter Property="BorderBrush" Value="#7A848E" />
                                                         <Setter Property="CornerRadius" Value="0" />
                                                     </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsIsa}" Value="True">
+                                                        <Setter Property="Background" Value="#E8E9EB" />
+                                                        <Setter Property="BorderBrush" Value="#B5B9BE" />
+                                                        <Setter Property="CornerRadius" Value="4" />
+                                                    </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </Border.Style>
@@ -536,7 +575,10 @@
                                             <!-- Mostrador -->
                                             <DockPanel Visibility="{Binding IsValue, Converter={StaticResource B2V}}">
                                                 <TextBlock DockPanel.Dock="Top" Text="{Binding Text}" FontSize="{Binding FontSize}" Foreground="#57606A" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock DockPanel.Dock="Bottom" Text="{Binding AlarmText}" Foreground="#CF222E" FontWeight="Bold" FontSize="11" />
+                                                <Border DockPanel.Dock="Bottom" Style="{StaticResource AlarmBadge}" Margin="0,4,0,0"
+                                                        Visibility="{Binding HasAlarm, Converter={StaticResource B2V}}">
+                                                    <TextBlock Text="{Binding AlarmBadgeText}" Style="{StaticResource AlarmBadgeText}" />
+                                                </Border>
                                                 <Border VerticalAlignment="Center">
                                                     <Border.Style>
                                                         <Style TargetType="Border">
@@ -554,7 +596,9 @@
                                                     <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Right">
                                                         <StackPanel Orientation="Horizontal">
                                                             <TextBlock Text="{Binding DisplayText}" FontSize="{Binding BigFontSize}" FontWeight="SemiBold" Foreground="{Binding ValueForeground}" />
-                                                            <TextBlock Text="{Binding UnitText}" FontSize="{Binding FontSize}" Foreground="#8C959F" Margin="6,0,0,0" VerticalAlignment="Bottom" />
+                                                            <TextBlock Text="{Binding UnitText}" FontSize="{Binding FontSize}" Foreground="#6E7781" Margin="6,0,0,4" VerticalAlignment="Bottom" />
+                                                            <TextBlock Text="{Binding TrendArrow}" FontSize="{Binding FontSize}" FontWeight="Bold" Foreground="{Binding ValueForeground}"
+                                                                       Margin="4,0,0,4" VerticalAlignment="Bottom" ToolTip="Tendência: subindo (↑) ou descendo (↓)" />
                                                         </StackPanel>
                                                     </Viewbox>
                                                 </Border>
@@ -573,27 +617,76 @@
                                                 </DockPanel>
                                             </DockPanel>
 
-                                            <!-- Barra -->
+                                            <!-- Barra: régua com mínimo/meio/máximo e marcas dos limites de alarme -->
                                             <DockPanel Visibility="{Binding IsBar, Converter={StaticResource B2V}}">
                                                 <DockPanel DockPanel.Dock="Top">
-                                                    <TextBlock DockPanel.Dock="Right" FontFamily="Consolas" Foreground="{Binding ValueForeground}">
-                                                        <Run Text="{Binding DisplayText, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding UnitText, Mode=OneWay}" />
+                                                    <TextBlock DockPanel.Dock="Right" Foreground="{Binding ValueForeground}" FontWeight="SemiBold">
+                                                        <Run Text="{Binding DisplayText, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding UnitText, Mode=OneWay}" Foreground="#6E7781" FontWeight="Normal" /><Run Text=" " /><Run Text="{Binding TrendArrow, Mode=OneWay}" />
                                                     </TextBlock>
                                                     <TextBlock Text="{Binding Text}" FontSize="{Binding FontSize}" Foreground="#57606A" TextTrimming="CharacterEllipsis" />
                                                 </DockPanel>
-                                                <ProgressBar Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Numeric, Mode=OneWay}" Foreground="{Binding BarBrush}"
-                                                             Background="#EEF1F5" BorderThickness="0" Margin="0,6,0,0">
-                                                    <ProgressBar.Style>
-                                                        <Style TargetType="ProgressBar">
-                                                            <Setter Property="Orientation" Value="Vertical" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsHorizontalBar}" Value="True">
-                                                                    <Setter Property="Orientation" Value="Horizontal" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </ProgressBar.Style>
-                                                </ProgressBar>
+                                                <Border DockPanel.Dock="Bottom" Style="{StaticResource AlarmBadge}" Margin="0,4,0,0"
+                                                        Visibility="{Binding HasAlarm, Converter={StaticResource B2V}}">
+                                                    <TextBlock Text="{Binding AlarmBadgeText}" Style="{StaticResource AlarmBadgeText}" />
+                                                </Border>
+                                                <Grid Margin="0,6,0,0">
+                                                    <!-- horizontal -->
+                                                    <Grid Visibility="{Binding IsHorizontalBar, Converter={StaticResource B2V}}">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="*" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+                                                        <ProgressBar Orientation="Horizontal" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Numeric, Mode=OneWay}"
+                                                                     Foreground="{Binding BarBrush}" Background="{Binding TrackBrush}" BorderBrush="#AFB8C1" BorderThickness="1" />
+                                                        <Grid IsHitTestVisible="False" Visibility="{Binding HasHighMarker, Converter={StaticResource B2V}}">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="{Binding HighBefore}" />
+                                                                <ColumnDefinition Width="{Binding HighAfter}" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <Rectangle Grid.Column="1" Width="2" HorizontalAlignment="Left" Margin="-1,-3" Fill="#CF222E" ToolTip="Limite de alarme alto" />
+                                                        </Grid>
+                                                        <Grid IsHitTestVisible="False" Visibility="{Binding HasLowMarker, Converter={StaticResource B2V}}">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="{Binding LowBefore}" />
+                                                                <ColumnDefinition Width="{Binding LowAfter}" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <Rectangle Grid.Column="1" Width="2" HorizontalAlignment="Left" Margin="-1,-3" Fill="#BF8700" ToolTip="Limite de alarme baixo" />
+                                                        </Grid>
+                                                        <Grid Grid.Row="1" Margin="0,2,0,0">
+                                                            <TextBlock Text="{Binding MinText}" FontSize="9" Foreground="#6E7781" HorizontalAlignment="Left" />
+                                                            <TextBlock Text="{Binding MidText}" FontSize="9" Foreground="#6E7781" HorizontalAlignment="Center" />
+                                                            <TextBlock Text="{Binding MaxText}" FontSize="9" Foreground="#6E7781" HorizontalAlignment="Right" />
+                                                        </Grid>
+                                                    </Grid>
+                                                    <!-- vertical -->
+                                                    <Grid Visibility="{Binding IsVerticalBar, Converter={StaticResource B2V}}">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <ProgressBar Orientation="Vertical" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Numeric, Mode=OneWay}"
+                                                                     Foreground="{Binding BarBrush}" Background="{Binding TrackBrush}" BorderBrush="#AFB8C1" BorderThickness="1" />
+                                                        <Grid IsHitTestVisible="False" Visibility="{Binding HasHighMarker, Converter={StaticResource B2V}}">
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="{Binding HighAfter}" />
+                                                                <RowDefinition Height="{Binding HighBefore}" />
+                                                            </Grid.RowDefinitions>
+                                                            <Rectangle Height="2" VerticalAlignment="Bottom" Margin="-3,0,-3,-1" Fill="#CF222E" ToolTip="Limite de alarme alto" />
+                                                        </Grid>
+                                                        <Grid IsHitTestVisible="False" Visibility="{Binding HasLowMarker, Converter={StaticResource B2V}}">
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="{Binding LowAfter}" />
+                                                                <RowDefinition Height="{Binding LowBefore}" />
+                                                            </Grid.RowDefinitions>
+                                                            <Rectangle Height="2" VerticalAlignment="Bottom" Margin="-3,0,-3,-1" Fill="#BF8700" ToolTip="Limite de alarme baixo" />
+                                                        </Grid>
+                                                        <Grid Grid.Column="1" Margin="4,0,0,0">
+                                                            <TextBlock Text="{Binding MaxText}" FontSize="9" Foreground="#6E7781" VerticalAlignment="Top" />
+                                                            <TextBlock Text="{Binding MidText}" FontSize="9" Foreground="#6E7781" VerticalAlignment="Center" />
+                                                            <TextBlock Text="{Binding MinText}" FontSize="9" Foreground="#6E7781" VerticalAlignment="Bottom" />
+                                                        </Grid>
+                                                    </Grid>
+                                                </Grid>
                                             </DockPanel>
 
                                             <!-- Indicador de estados -->
@@ -611,17 +704,30 @@
                                                 <TextBlock DockPanel.Dock="Top" Text="{Binding Text}" FontSize="{Binding FontSize}" Foreground="#57606A"
                                                            TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" />
                                                 <Viewbox>
-                                                    <Canvas Width="120" Height="112">
-                                                        <Path Data="M 24.6,95.4 A 50,50 0 1 1 95.4,95.4" Stroke="#D0D7DE" StrokeThickness="10" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
-                                                        <Line X1="60" Y1="60" X2="60" Y2="18" Stroke="{Binding BarBrush}" StrokeThickness="4" StrokeEndLineCap="Triangle"
+                                                    <Canvas Width="120" Height="118">
+                                                        <!-- arco, faixas de atenção/alarme e marcas da escala -->
+                                                        <Path Data="M 24.6,95.4 A 50,50 0 1 1 95.4,95.4" Stroke="{Binding GaugeTrackBrush}" StrokeThickness="10" />
+                                                        <Path Data="{Binding GaugeLowWarn}" Stroke="#E0B53A" StrokeThickness="10" />
+                                                        <Path Data="{Binding GaugeLowBand}" Stroke="#CF222E" StrokeThickness="10" />
+                                                        <Path Data="{Binding GaugeHighWarn}" Stroke="#E0B53A" StrokeThickness="10" />
+                                                        <Path Data="{Binding GaugeHighBand}" Stroke="#CF222E" StrokeThickness="10" />
+                                                        <Path Data="{Binding GaugeTicks}" Stroke="#57606A" StrokeThickness="1.2" />
+                                                        <TextBlock Canvas.Left="10" Canvas.Top="98" Width="40" Text="{Binding MinText}" FontSize="8.5" Foreground="#6E7781" />
+                                                        <TextBlock Canvas.Left="0" Canvas.Top="20" Width="120" TextAlignment="Center" Text="{Binding MidText}" FontSize="8.5" Foreground="#6E7781" />
+                                                        <TextBlock Canvas.Left="70" Canvas.Top="98" Width="40" TextAlignment="Right" Text="{Binding MaxText}" FontSize="8.5" Foreground="#6E7781" />
+                                                        <!-- ponteiro -->
+                                                        <Line X1="60" Y1="60" X2="60" Y2="22" Stroke="{Binding BarBrush}" StrokeThickness="3.5" StrokeStartLineCap="Round" StrokeEndLineCap="Triangle"
                                                               RenderTransform="{Binding NeedleAngle, Converter={StaticResource NeedleRotate}}" />
-                                                        <Ellipse Canvas.Left="53" Canvas.Top="53" Width="14" Height="14" Fill="#24292F" />
-                                                        <TextBlock Canvas.Left="14" Canvas.Top="100" Text="{Binding MinText}" FontSize="9" Foreground="#8C959F" />
-                                                        <TextBlock Canvas.Left="84" Canvas.Top="100" Width="24" TextAlignment="Right" Text="{Binding MaxText}" FontSize="9" Foreground="#8C959F" />
-                                                        <TextBlock Canvas.Left="0" Canvas.Top="74" Width="120" TextAlignment="Center" FontWeight="Bold" FontSize="12"
-                                                                   Foreground="{Binding ValueForeground}">
-                                                            <Run Text="{Binding DisplayText, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding UnitText, Mode=OneWay}" />
+                                                        <Ellipse Canvas.Left="54" Canvas.Top="54" Width="12" Height="12" Fill="#24292F" />
+                                                        <!-- valor -->
+                                                        <TextBlock Canvas.Left="0" Canvas.Top="74" Width="120" TextAlignment="Center" Foreground="{Binding ValueForeground}">
+                                                            <Run Text="{Binding DisplayText, Mode=OneWay}" FontWeight="Bold" FontSize="15" /><Run Text=" " /><Run Text="{Binding UnitText, Mode=OneWay}" FontSize="9" Foreground="#6E7781" />
                                                         </TextBlock>
+                                                        <Border Canvas.Left="0" Canvas.Top="100" Width="120" Visibility="{Binding HasAlarm, Converter={StaticResource B2V}}">
+                                                            <Border Style="{StaticResource AlarmBadge}" HorizontalAlignment="Center" Padding="4,0">
+                                                                <TextBlock Text="{Binding AlarmBadgeText}" Style="{StaticResource AlarmBadgeText}" FontSize="8" />
+                                                            </Border>
+                                                        </Border>
                                                     </Canvas>
                                                 </Viewbox>
                                             </DockPanel>
@@ -634,9 +740,25 @@
                                                     </TextBlock>
                                                     <TextBlock Text="{Binding Text}" FontSize="{Binding FontSize}" Foreground="#57606A" TextTrimming="CharacterEllipsis" />
                                                 </DockPanel>
-                                                <Border Margin="0,6,0,0" BorderBrush="#D0D7DE" BorderThickness="0,0,0,1" ClipToBounds="True">
-                                                    <Polyline Points="{Binding TrendPoints}" Stroke="{Binding TrendBrush}" StrokeThickness="2" StrokeLineJoin="Round" />
-                                                </Border>
+                                                <Grid Margin="0,6,0,0" ClipToBounds="True">
+                                                    <!-- grade -->
+                                                    <UniformGrid Rows="4" IsHitTestVisible="False">
+                                                        <Border BorderBrush="#E1E4E8" BorderThickness="0,1,0,0" />
+                                                        <Border BorderBrush="#E1E4E8" BorderThickness="0,1,0,0" />
+                                                        <Border BorderBrush="#E1E4E8" BorderThickness="0,1,0,0" />
+                                                        <Border BorderBrush="#E1E4E8" BorderThickness="0,1,0,1" />
+                                                    </UniformGrid>
+                                                    <Canvas>
+                                                        <Line X1="0" X2="{Binding TrendWidth}" Y1="{Binding TrendHighY}" Y2="{Binding TrendHighY}" Stroke="#CF222E" StrokeThickness="1.2"
+                                                              StrokeDashArray="5 3" Visibility="{Binding HasTrendHigh, Converter={StaticResource B2V}}" />
+                                                        <Line X1="0" X2="{Binding TrendWidth}" Y1="{Binding TrendLowY}" Y2="{Binding TrendLowY}" Stroke="#BF8700" StrokeThickness="1.2"
+                                                              StrokeDashArray="5 3" Visibility="{Binding HasTrendLow, Converter={StaticResource B2V}}" />
+                                                        <Polyline Points="{Binding TrendPoints}" Stroke="{Binding TrendBrush}" StrokeThickness="2" StrokeLineJoin="Round" />
+                                                    </Canvas>
+                                                    <!-- escala -->
+                                                    <TextBlock Text="{Binding TrendTopText}" FontSize="8.5" Foreground="#6E7781" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,2,0" />
+                                                    <TextBlock Text="{Binding TrendBottomText}" FontSize="8.5" Foreground="#6E7781" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2,1" />
+                                                </Grid>
                                             </DockPanel>
                                         </Grid>
                                     </Border>
@@ -733,6 +855,15 @@
                                             FontWeight="SemiBold" Background="{Binding ButtonBrush}" Foreground="{Binding ButtonForeground}"
                                             BorderBrush="#8C959F" Click="HmiButton_Click"
                                             PreviewMouseLeftButtonDown="HmiButton_Down" PreviewMouseLeftButtonUp="HmiButton_Up" />
+
+                                    <!-- Sem comunicação (modo Executar): hachura + aviso, o valor antigo não fica parecendo bom -->
+                                    <Grid Visibility="{Binding ShowBadOverlay, Converter={StaticResource B2V}}" ToolTip="{Binding StatusTip}">
+                                        <Rectangle RadiusX="6" RadiusY="6" Fill="{StaticResource BadHatch}" />
+                                        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-7,-7,0" Width="18" Height="18" CornerRadius="9"
+                                                Background="#9A6700" BorderBrush="White" BorderThickness="1.5">
+                                            <TextBlock Text="!" Foreground="White" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                    </Grid>
 
                                     <!-- Camada de edição: mover, selecionar, redimensionar -->
                                     <Grid Visibility="{Binding IsEditMode, Converter={StaticResource B2V}}" Background="Transparent" Cursor="SizeAll"

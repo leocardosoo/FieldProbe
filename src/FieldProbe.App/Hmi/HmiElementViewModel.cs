@@ -18,6 +18,18 @@ public sealed class HmiElementViewModel : ObservableObject
     private bool _isSelected;
     private bool _isEditMode = true;
     private bool _isWinCC;
+    private bool _isIsa;
+    private double? _previous;
+    private string _trendArrow = string.Empty;
+    private double? _linkedHigh;
+    private double? _linkedLow;
+    private double _trendLow;
+    private double _trendHigh = 1;
+    private Geometry? _gaugeTicks;
+    private Geometry? _gaugeHighBand;
+    private Geometry? _gaugeHighWarn;
+    private Geometry? _gaugeLowBand;
+    private Geometry? _gaugeLowWarn;
     private bool _isBad = true;
     private bool _isOn;
     private bool _isOn2;
@@ -37,7 +49,11 @@ public sealed class HmiElementViewModel : ObservableObject
     private ImageSource? _image;
     private bool _imageLoaded;
 
-    public HmiElementViewModel(HmiElementData data) => Data = data;
+    public HmiElementViewModel(HmiElementData data)
+    {
+        Data = data;
+        RebuildScale();
+    }
 
     public HmiElementData Data { get; }
 
@@ -181,7 +197,8 @@ public sealed class HmiElementViewModel : ObservableObject
         get => Data.Min;
         set
         {
-            Update(Data.Min, value, v => Data.Min = v, nameof(Min), nameof(Fraction), nameof(NeedleAngle), nameof(MinText));
+            Update(Data.Min, value, v => Data.Min = v, nameof(Min), nameof(Fraction), nameof(NeedleAngle), nameof(MinText), nameof(MidText));
+            RebuildScale();
             RebuildTrend();
         }
     }
@@ -191,24 +208,36 @@ public sealed class HmiElementViewModel : ObservableObject
         get => Data.Max;
         set
         {
-            Update(Data.Max, value, v => Data.Max = v, nameof(Max), nameof(Fraction), nameof(NeedleAngle), nameof(MaxText));
+            Update(Data.Max, value, v => Data.Max = v, nameof(Max), nameof(Fraction), nameof(NeedleAngle), nameof(MaxText), nameof(MidText));
+            RebuildScale();
             RebuildTrend();
         }
     }
 
     public string MinText => Data.Min.ToString("G4", CultureInfo.CurrentCulture);
     public string MaxText => Data.Max.ToString("G4", CultureInfo.CurrentCulture);
+    public string MidText => ((Data.Min + Data.Max) / 2).ToString("G4", CultureInfo.CurrentCulture);
 
     public string AlarmHighText
     {
         get => Data.AlarmHigh?.ToString(CultureInfo.CurrentCulture) ?? string.Empty;
-        set => Update(Data.AlarmHigh, ParseNullable(value), v => Data.AlarmHigh = v);
+        set
+        {
+            Update(Data.AlarmHigh, ParseNullable(value), v => Data.AlarmHigh = v);
+            RebuildScale();
+            RebuildTrend();
+        }
     }
 
     public string AlarmLowText
     {
         get => Data.AlarmLow?.ToString(CultureInfo.CurrentCulture) ?? string.Empty;
-        set => Update(Data.AlarmLow, ParseNullable(value), v => Data.AlarmLow = v);
+        set
+        {
+            Update(Data.AlarmLow, ParseNullable(value), v => Data.AlarmLow = v);
+            RebuildScale();
+            RebuildTrend();
+        }
     }
 
     public string OnColor
@@ -280,7 +309,12 @@ public sealed class HmiElementViewModel : ObservableObject
     public bool IsLinked
     {
         get => Data.LinkToItem;
-        set => Update(Data.LinkToItem, value, v => Data.LinkToItem = v, nameof(IsLinked), nameof(IsNotLinked), nameof(ShowOwnAlarm), nameof(BindingText), nameof(LinkText));
+        set
+        {
+            Update(Data.LinkToItem, value, v => Data.LinkToItem = v, nameof(IsLinked), nameof(IsNotLinked), nameof(ShowOwnAlarm), nameof(BindingText), nameof(LinkText));
+            RebuildScale();
+            RebuildTrend();
+        }
     }
 
     public bool IsNotLinked => !Data.LinkToItem;
@@ -337,7 +371,7 @@ public sealed class HmiElementViewModel : ObservableObject
         set
         {
             if (!Set(ref _isEditMode, value)) return;
-            foreach (var name in new[] { nameof(IsRunMode), nameof(IsAnimating), nameof(IsFlowingForward), nameof(IsFlowingReverse), nameof(IsBlinking), nameof(IsHiddenByCondition), nameof(IsClickable) })
+            foreach (var name in new[] { nameof(IsRunMode), nameof(IsAnimating), nameof(IsFlowingForward), nameof(IsFlowingReverse), nameof(IsBlinking), nameof(IsHiddenByCondition), nameof(IsClickable), nameof(ShowBadOverlay) })
                 OnPropertyChanged(name);
         }
     }
@@ -356,6 +390,24 @@ public sealed class HmiElementViewModel : ObservableObject
             if (!Set(ref _isWinCC, value)) return;
             OnPropertyChanged(nameof(ButtonBrush));
             OnPropertyChanged(nameof(ButtonForeground));
+        }
+    }
+
+    /// <summary>
+    /// Visual de alto desempenho (ISA-101): equipamentos e mostradores em cinza; cor só em alarme ou falha.
+    /// </summary>
+    public bool IsIsa
+    {
+        get => _isIsa;
+        set
+        {
+            if (!Set(ref _isIsa, value)) return;
+            foreach (var name in new[]
+                     {
+                         nameof(LampBrush), nameof(SymbolBrush), nameof(LiquidBrush), nameof(FlowBrush), nameof(PanelBrush), nameof(BarBrush),
+                         nameof(TrendBrush), nameof(ButtonBrush), nameof(ButtonForeground), nameof(GaugeTrackBrush), nameof(TrackBrush)
+                     })
+                OnPropertyChanged(name);
         }
     }
 
@@ -402,19 +454,31 @@ public sealed class HmiElementViewModel : ObservableObject
     public double NeedleAngle => -135 + 270 * Fraction;
 
     public string ValueForeground => IsBad ? "#8C959F" : HasAlarm ? "#CF222E" : "#1F2328";
-    public string LampBrush => IsBad ? "#D0D7DE" : HmiColors.Hex(IsOn ? OnColor : OffColor);
-    public string SymbolBrush => IsBad ? "#C9CED4" : HmiColors.Hex(IsOn ? OnColor : OffColor);
-    public string LiquidBrush => HasAlarm ? "#CF222E" : HmiColors.Hex(OnColor);
-    public string FlowBrush => IsBad || !IsOn ? "#AFB8C1" : HmiColors.Hex(OnColor);
-    public string PanelBrush => HmiColors.Hex(OnColor);
-    public string BarBrush => HasAlarm ? "#CF222E" : "#0F6CBD";
-    public string TrendBrush => HasAlarm ? "#CF222E" : "#0F6CBD";
+    // ISA-101: ligado = cinza escuro, desligado = cinza claro, alarme = vermelho; as cores escolhidas valem nos outros visuais
+    public string LampBrush => IsBad ? "#D0D7DE" : _isIsa ? (IsOn ? "#3E444A" : "#E8E9EB") : HmiColors.Hex(IsOn ? OnColor : OffColor);
+    public string SymbolBrush => IsBad ? "#C9CED4" : _isIsa ? (IsOn ? "#5F656B" : "#E8E9EB") : HmiColors.Hex(IsOn ? OnColor : OffColor);
+    public string LiquidBrush => HasAlarm ? "#CF222E" : _isIsa ? "#9AA0A6" : HmiColors.Hex(OnColor);
+    public string FlowBrush => IsBad || !IsOn ? "#AFB8C1" : _isIsa ? "#5F656B" : HmiColors.Hex(OnColor);
+    public string PanelBrush => _isIsa ? "#E3E5E8" : HmiColors.Hex(OnColor);
+    public string BarBrush => HasAlarm ? "#CF222E" : _isIsa ? "#3E444A" : "#0F6CBD";
+    public string TrendBrush => HasAlarm ? "#CF222E" : _isIsa ? "#1F2328" : "#0F6CBD";
+    public string GaugeTrackBrush => _isIsa ? "#C4C7CB" : "#D0D7DE";
+    public string TrackBrush => _isIsa ? "#D3D6DA" : "#EEF1F5";
 
     public string ButtonBrush => ButtonMode == HmiButtonMode.Alternar && !IsBad && IsOn
-        ? HmiColors.Hex(OnColor)
-        : IsWinCC ? "#DCDFE3" : "#F6F8FA";
+        ? (_isIsa ? "#3E444A" : HmiColors.Hex(OnColor))
+        : _isIsa ? "#C4C7CB" : IsWinCC ? "#DCDFE3" : "#F6F8FA";
 
-    public string ButtonForeground => ButtonMode == HmiButtonMode.Alternar && !IsBad && IsOn && OnColor != "Branco" && OnColor != "Amarelo" ? "#FFFFFF" : "#1F2328";
+    public string ButtonForeground => ButtonMode == HmiButtonMode.Alternar && !IsBad && IsOn && (_isIsa || OnColor != "Branco" && OnColor != "Amarelo") ? "#FFFFFF" : "#1F2328";
+
+    /// <summary>Selo de alarme ("ALARME ALTO"), vazio sem alarme.</summary>
+    public string AlarmBadgeText => _alarmText.Length > 0 ? $"ALARME {_alarmText}" : string.Empty;
+
+    /// <summary>Seta de tendência do valor (↑ subindo, ↓ descendo, vazio parado).</summary>
+    public string TrendArrow => _trendArrow;
+
+    /// <summary>No modo Executar, elemento com variável mas sem leitura boa: hachura cinza + aviso, como nos SCADAs.</summary>
+    public bool ShowBadOverlay => IsRunMode && IsBad && (IsBound || Data.LinkToItem) && !IsHiddenByCondition;
 
     // Sinaleiro: verde (endereço 1), amarelo (2), vermelho (3)
     public string StackGreen => !IsBad && _isOn ? "#2DA44E" : "#1B3A24";
@@ -508,6 +572,13 @@ public sealed class HmiElementViewModel : ObservableObject
     public void ApplyFromItem(WatchItemViewModel item)
     {
         _linkedUnit = item.Unit;
+        if (_linkedHigh != item.AlarmHigh || _linkedLow != item.AlarmLow)
+        {
+            _linkedHigh = item.AlarmHigh;
+            _linkedLow = item.AlarmLow;
+            RebuildScale();
+            RebuildTrend();
+        }
         var raw = item.Value;
         if (!item.IsRunning || item.Quality != Quality.Good || raw is null)
         {
@@ -538,10 +609,22 @@ public sealed class HmiElementViewModel : ObservableObject
             AlarmText = string.Empty;
             _stateText = "—";
             _stateBrush = "#AFB8C1";
+            _previous = null;
+            _trendArrow = string.Empty;
         }
         else
         {
             IsOn = raw is bool b ? b : number is double n && n != 0;
+            if (number is double current && raw is not bool)
+            {
+                // seta só quando muda de verdade (ignora ruído abaixo de 0,1% da faixa)
+                var span = Max > Min ? Max - Min : Math.Max(1, Math.Abs(current));
+                if (_previous is double last && Math.Abs(current - last) > span * 0.001)
+                    _trendArrow = current > last ? "↑" : "↓";
+                else if (_previous is null)
+                    _trendArrow = string.Empty;
+                _previous = current;
+            }
             Numeric = number ?? 0;
             DisplayText = raw switch
             {
@@ -560,7 +643,8 @@ public sealed class HmiElementViewModel : ObservableObject
                      nameof(FlowBrush), nameof(ButtonBrush), nameof(ButtonForeground), nameof(BarBrush), nameof(TrendBrush),
                      nameof(StatusTip), nameof(IsAnimating), nameof(IsFlowingForward), nameof(IsFlowingReverse), nameof(IsBlinking),
                      nameof(Fraction), nameof(TankFraction), nameof(NeedleAngle), nameof(StackGreen), nameof(StackYellow), nameof(StackRed),
-                     nameof(UnitText), nameof(StateText), nameof(StateBrush), nameof(QualityText)
+                     nameof(UnitText), nameof(StateText), nameof(StateBrush), nameof(QualityText),
+                     nameof(AlarmBadgeText), nameof(TrendArrow), nameof(ShowBadOverlay)
                  })
             OnPropertyChanged(name);
     }
@@ -621,27 +705,46 @@ public sealed class HmiElementViewModel : ObservableObject
         RebuildTrend();
     }
 
+    /// <summary>Limite de alarme em vigor: o do item ligado ou o do próprio elemento.</summary>
+    private double? EffectiveHigh => Data.LinkToItem ? _linkedHigh : Data.AlarmHigh;
+    private double? EffectiveLow => Data.LinkToItem ? _linkedLow : Data.AlarmLow;
+
+    public double TrendWidth => Math.Max(10, Width - 24);
+    public double TrendHeight => Math.Max(10, Height - 52);
+    public string TrendTopText => _trendHigh.ToString("G4", CultureInfo.CurrentCulture);
+    public string TrendBottomText => _trendLow.ToString("G4", CultureInfo.CurrentCulture);
+    public bool HasTrendHigh => EffectiveHigh is double h && h > _trendLow && h < _trendHigh;
+    public bool HasTrendLow => EffectiveLow is double l && l > _trendLow && l < _trendHigh;
+    public double TrendHighY => EffectiveHigh is double h ? TrendY(h) : 0;
+    public double TrendLowY => EffectiveLow is double l ? TrendY(l) : 0;
+
+    private double TrendY(double value) =>
+        TrendHeight - TrendHeight * Math.Clamp((value - _trendLow) / Math.Max(1e-9, _trendHigh - _trendLow), 0, 1);
+
     /// <summary>Recalcula a linha da mini tendência no tamanho atual do elemento.</summary>
     private void RebuildTrend()
     {
         if (!IsTrend) return;
-        var width = Math.Max(10, Width - 24);
-        var height = Math.Max(10, Height - 52);
+        var width = TrendWidth;
+        var height = TrendHeight;
         var values = _trend.ToArray();
         var points = new PointCollection();
+        double low = Min, high = Max;
+        if (high <= low)
+        {
+            // escala automática: inclui os limites de alarme para a linha tracejada aparecer
+            var all = values.Concat(new[] { EffectiveHigh, EffectiveLow }.OfType<double>()).ToList();
+            low = all.Count > 0 ? all.Min() : 0;
+            high = all.Count > 0 ? all.Max() : 1;
+            var margin = Math.Max((high - low) * 0.1, 1e-6);
+            if (high - low < 1e-9) margin = 1;
+            low -= margin;
+            high += margin;
+        }
+        _trendLow = low;
+        _trendHigh = high;
         if (values.Length > 1)
         {
-            double low = Min, high = Max;
-            if (high <= low)
-            {
-                low = values.Min();
-                high = values.Max();
-                if (high - low < 1e-9)
-                {
-                    low -= 1;
-                    high += 1;
-                }
-            }
             for (var i = 0; i < values.Length; i++)
             {
                 var x = width * i / (TrendCapacity - 1);
@@ -651,7 +754,93 @@ public sealed class HmiElementViewModel : ObservableObject
         }
         points.Freeze();
         _trendPoints = points;
-        OnPropertyChanged(nameof(TrendPoints));
+        foreach (var name in new[]
+                 {
+                     nameof(TrendPoints), nameof(TrendWidth), nameof(TrendHeight), nameof(TrendTopText), nameof(TrendBottomText),
+                     nameof(HasTrendHigh), nameof(HasTrendLow), nameof(TrendHighY), nameof(TrendLowY)
+                 })
+            OnPropertyChanged(name);
+    }
+
+    // ===================== Escala: medidor e barra =====================
+
+    /// <summary>Marcas da escala do medidor (11 traços, os de 0%, 50% e 100% maiores).</summary>
+    public Geometry? GaugeTicks => _gaugeTicks;
+
+    /// <summary>Faixas coloridas no arco: alarme (vermelho) e atenção (amarelo, os 10% antes do alarme).</summary>
+    public Geometry? GaugeHighBand => _gaugeHighBand;
+    public Geometry? GaugeHighWarn => _gaugeHighWarn;
+    public Geometry? GaugeLowBand => _gaugeLowBand;
+    public Geometry? GaugeLowWarn => _gaugeLowWarn;
+
+    /// <summary>Posição (0 a 1) da marca de alarme alto/baixo na barra; nulo se não há limite dentro da faixa.</summary>
+    private double? HighFraction => EffectiveHigh is double h && Max > Min && h > Min && h < Max ? (h - Min) / (Max - Min) : null;
+    private double? LowFraction => EffectiveLow is double l && Max > Min && l > Min && l < Max ? (l - Min) / (Max - Min) : null;
+
+    public bool HasHighMarker => HighFraction is not null;
+    public bool HasLowMarker => LowFraction is not null;
+    public GridLength HighBefore => new(HighFraction ?? 1, GridUnitType.Star);
+    public GridLength HighAfter => new(1 - (HighFraction ?? 1), GridUnitType.Star);
+    public GridLength LowBefore => new(LowFraction ?? 0, GridUnitType.Star);
+    public GridLength LowAfter => new(1 - (LowFraction ?? 0), GridUnitType.Star);
+
+    private const double GaugeCx = 60, GaugeCy = 60, GaugeR = 50;
+
+    private double GaugeAngle(double value) =>
+        -135 + 270 * (Max > Min ? Math.Clamp((value - Min) / (Max - Min), 0, 1) : 0);
+
+    private static string GaugePoint(double angle, double radius)
+    {
+        var rad = angle * Math.PI / 180;
+        var x = GaugeCx + radius * Math.Sin(rad);
+        var y = GaugeCy - radius * Math.Cos(rad);
+        return x.ToString("F2", CultureInfo.InvariantCulture) + "," + y.ToString("F2", CultureInfo.InvariantCulture);
+    }
+
+    private static Geometry? Arc(double fromAngle, double toAngle)
+    {
+        if (toAngle - fromAngle < 0.5) return null;
+        var large = toAngle - fromAngle > 180 ? 1 : 0;
+        var geometry = Geometry.Parse($"M {GaugePoint(fromAngle, GaugeR)} A {GaugeR},{GaugeR} 0 {large} 1 {GaugePoint(toAngle, GaugeR)}");
+        geometry.Freeze();
+        return geometry;
+    }
+
+    /// <summary>Recalcula as marcas e as faixas do medidor e as marcas de alarme da barra.</summary>
+    private void RebuildScale()
+    {
+        var ticks = new System.Text.StringBuilder();
+        for (var i = 0; i <= 10; i++)
+        {
+            var angle = -135 + 27 * i;
+            var inner = i % 5 == 0 ? 35 : 39;
+            ticks.Append($"M {GaugePoint(angle, inner)} L {GaugePoint(angle, 43)} ");
+        }
+        _gaugeTicks = Geometry.Parse(ticks.ToString());
+        _gaugeTicks.Freeze();
+
+        var span = Max - Min;
+        _gaugeHighBand = _gaugeHighWarn = _gaugeLowBand = _gaugeLowWarn = null;
+        if (span > 0)
+        {
+            if (EffectiveHigh is double high && high < Max)
+            {
+                _gaugeHighBand = Arc(GaugeAngle(high), 135);
+                _gaugeHighWarn = Arc(GaugeAngle(Math.Max(Min, high - span * 0.1)), GaugeAngle(high));
+            }
+            if (EffectiveLow is double low && low > Min)
+            {
+                _gaugeLowBand = Arc(-135, GaugeAngle(low));
+                _gaugeLowWarn = Arc(GaugeAngle(low), GaugeAngle(Math.Min(Max, low + span * 0.1)));
+            }
+        }
+
+        foreach (var name in new[]
+                 {
+                     nameof(GaugeTicks), nameof(GaugeHighBand), nameof(GaugeHighWarn), nameof(GaugeLowBand), nameof(GaugeLowWarn),
+                     nameof(HasHighMarker), nameof(HasLowMarker), nameof(HighBefore), nameof(HighAfter), nameof(LowBefore), nameof(LowAfter)
+                 })
+            OnPropertyChanged(name);
     }
 
     // ===================== Utilitários =====================

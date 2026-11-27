@@ -2,13 +2,48 @@ using System.Buffers.Binary;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
+using FieldProbe.Drivers.Mitsubishi;
 using FieldProbe.Drivers.Siemens;
 
 namespace FieldProbe.App.Services;
 
+/// <summary>CPU Mitsubishi que respondeu em MC Protocol: modelo (se informado) e série sugerida para a conexão.</summary>
+public sealed record MelsecProbe(string? Model, string? Series);
+
 /// <summary>Sondas leves de identificação de protocolo (só handshake, sem ler/escrever dados de processo).</summary>
 public static class Probes
 {
+    /// <summary>
+    /// Mitsubishi MC Protocol (3E binário): pede o modelo da CPU (comando 0101). Não lê nem escreve dispositivos.
+    /// Nulo se a porta não fala MC Protocol (outro serviço, ASCII ou sem resposta).
+    /// </summary>
+    public static async Task<MelsecProbe?> MelsecAsync(string ip, int port, int timeoutMs, CancellationToken ct)
+    {
+        using var client = new McClient(ip, port, timeoutMs, 0, 0xFF, McSeries.QL);
+        try
+        {
+            await client.ConnectAsync(ct).ConfigureAwait(false);
+            var (model, _) = await client.ReadCpuModelAsync(ct).ConfigureAwait(false);
+            var series = model.StartsWith("FX5", StringComparison.OrdinalIgnoreCase) ? MitsubishiDrivers.SeriesIqF
+                : model.Length > 1 && model[0] is 'R' or 'r' && char.IsDigit(model[1]) ? MitsubishiDrivers.SeriesIqR
+                : model.Length > 0 && model[0] is 'Q' or 'L' ? MitsubishiDrivers.SeriesQ
+                : null;
+            return new MelsecProbe(model.Length > 0 ? model : null, series);
+        }
+        catch (McException)
+        {
+            return new MelsecProbe(null, null); // respondeu em MC Protocol, só não informou o modelo
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     /// <summary>OPC UA: envia HEL e espera ACK (ou ERR, que também indica um stack OPC UA).</summary>
     public static async Task<bool> OpcUaHelloAsync(string ip, int port, int timeoutMs, CancellationToken ct)
     {

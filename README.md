@@ -15,7 +15,7 @@ Conecte, navegue, monitore, escreva e diagnostique CLPs, inversores, gateways, s
 | **Mitsubishi MC / SLMP** (Q, L, iQ-R, iQ-F/FX5) | D/M/X/Y/W/B/R/T/C/SM/SD sugeridos | ✔ bits, Int16/32, Real, String, bit de palavra | polling | modelo da CPU, RUN/STOP (SD203), último erro (SD0) |
 
 Também inclui:
-- **Scanner de rede OT** (Ferramentas → Scanner): varre uma faixa de IPs, identifica Modbus (FC 43), EtherNet/IP (ListIdentity), Siemens S7 (COTP), OPC UA (HEL/ACK), MQTT (testa acesso anônimo), DNP3, IEC 104, FINS, MELSEC e serviços como Telnet, FTP, HTTP, SMB, RDP e VNC. Gera achados de segurança e cria conexões com um clique.
+- **Scanner de rede OT** (Ferramentas → Scanner): varre uma faixa de IPs, identifica Modbus (FC 43), EtherNet/IP (ListIdentity), Siemens S7 (COTP), OPC UA (HEL/ACK), MQTT (testa acesso anônimo), DNP3, IEC 104, FINS, Mitsubishi (MC/SLMP nas portas 5000/5001, confirmado pelo modelo da CPU; GX Works na 5007) e serviços como Telnet, FTP, HTTP, SMB, RDP e VNC. Gera achados de segurança e cria conexões com um clique.
 - **Relatório de auditoria de segurança OT** (Ferramentas → Relatório): junta a varredura e o diagnóstico das conexões num HTML com nota de exposição, recomendações priorizadas, inventário e boas práticas. Para PDF, use Ctrl+P → Salvar como PDF.
 - **Edição de item** (duplo clique ou F2): nome amigável, tipo, ordem, ciclo, **escala, offset e unidade**. A escrita converte o valor de engenharia de volta para o valor bruto.
 - **Alarmes por item**: limite alto/baixo (sobre o valor com escala) e falha de comunicação. A linha fica vermelha, há uma aba de histórico com reconhecimento, som opcional e contador na barra de status.
@@ -116,3 +116,4 @@ FieldProbe.sln
 .\build\publish.ps1 -Version 1.0.0          # gera artifacts\publish (não exige .NET na máquina do cliente)
 iscc build\installer.iss /DAppVersion=1.0.0 # gera artifacts\installer\FieldProbe-Setup-1.0.0.exe
 ```
+

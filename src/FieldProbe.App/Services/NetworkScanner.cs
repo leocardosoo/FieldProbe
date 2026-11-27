@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using FieldProbe.Core;
 using FieldProbe.Drivers.EtherNetIP;
+using FieldProbe.Drivers.Mitsubishi;
 using FieldProbe.Drivers.Modbus;
 using FieldProbe.Drivers.Mqtt;
 using FieldProbe.Drivers.OpcUa;
@@ -39,6 +40,9 @@ public sealed class ScanResult
     public List<ScanFinding> Findings { get; } = new();
     public string? SuggestedProtocol { get; set; }
     public int SuggestedPort { get; set; }
+
+    /// <summary>Opções já descobertas para a conexão sugerida (ex.: série da CPU Mitsubishi).</summary>
+    public Dictionary<string, string> SuggestedOptions { get; } = new();
 
     public string PortsText => string.Join(", ", OpenPorts.OrderBy(p => p));
     public string ProtocolsText => string.Join(", ", Protocols.Distinct());
@@ -103,7 +107,9 @@ public sealed class NetworkScanner
         new(20000, "DNP3", true),
         new(2404, "IEC 60870-5-104", true),
         new(9600, "Omron FINS", true),
-        new(5007, "Mitsubishi MELSEC", true),
+        new(5000, "Mitsubishi MC/SLMP", true),
+        new(5001, "Mitsubishi MC/SLMP", true),
+        new(5007, "Mitsubishi GX Works (MELSOFT)", true),
         new(80, "HTTP", false),
         new(443, "HTTPS", false),
         new(21, "FTP", false),
@@ -113,6 +119,9 @@ public sealed class NetworkScanner
         new(3389, "RDP", false),
         new(5900, "VNC", false)
     };
+
+    /// <summary>Nome do protocolo na lista do resultado quando a sonda confirma MC Protocol (seguido da porta).</summary>
+    private const string McProtocolName = "Mitsubishi MC/SLMP";
 
     /// <summary>Máximo de conexões TCP abertas ao mesmo tempo (evita sobrecarregar o PC e a rede OT).</summary>
     private const int MaxConcurrentSockets = 200;
@@ -196,11 +205,14 @@ public sealed class NetworkScanner
             (102, S7Driver.Protocol),
             (502, ModbusDrivers.TcpName),
             (1883, MqttDriver.Protocol),
-            (5007, FieldProbe.Drivers.Mitsubishi.MitsubishiDriver.Protocol)
+            (5000, MitsubishiDriver.Protocol),
+            (5001, MitsubishiDriver.Protocol)
         };
         foreach (var (port, protocol) in preference)
         {
             if (!open.Contains(port)) continue;
+            // Porta 5000/5001 só vira conexão Mitsubishi se a sonda confirmou MC Protocol (são portas usadas por outros serviços)
+            if (protocol == MitsubishiDriver.Protocol && !result.Protocols.Contains($"{McProtocolName} ({port})")) continue;
             result.SuggestedPort = port;
             result.SuggestedProtocol = protocol;
             break;
@@ -329,10 +341,29 @@ public sealed class NetworkScanner
                     "FINS/TCP não autentica clientes.", "Restringir o acesso à porta 9600 por firewall/VLAN."));
                 break;
 
+            case 5000:
+            case 5001:
+                // Portas comuns para MC Protocol/SLMP, mas também usadas por outros serviços: só conta se a CPU responder
+                var melsec = await Probes.MelsecAsync(ip, port, timeoutMs, ct).ConfigureAwait(false);
+                if (melsec is null)
+                {
+                    r.Protocols.Add($"porta {port} (não é MC Protocol)");
+                    break;
+                }
+                r.Protocols.Add($"{McProtocolName} ({port})");
+                r.Identity.Add(melsec.Model is null ? $"Mitsubishi MELSEC · MC Protocol na porta {port}" : $"Mitsubishi {melsec.Model}");
+                if (melsec.Series is { } series) r.SuggestedOptions["Series"] = series;
+                r.Findings.Add(new(DiagnosticSeverity.Warning, "Mitsubishi MC",
+                    $"A CPU aceita MC Protocol/SLMP na porta {port}: sem autenticação, qualquer PC da rede lê e escreve dispositivos (D, M, Y...).",
+                    "Restringir a porta por firewall/VLAN, usar senha remota (remote password) na porta e desabilitar a escrita em RUN se não for necessária."));
+                break;
+
             case 5007:
-                r.Protocols.Add("Mitsubishi MELSEC");
-                r.Findings.Add(new(DiagnosticSeverity.Warning, "MELSEC",
-                    "Protocolo MC/SLMP sem autenticação.", "Restringir o acesso por firewall/VLAN."));
+                r.Protocols.Add("Mitsubishi GX Works (MELSOFT)");
+                r.Findings.Add(new(DiagnosticSeverity.Warning, "Mitsubishi",
+                    "Porta de engenharia do GX Works (MELSOFT) aberta: indica um CLP Mitsubishi que aceita conexão de programação pela rede.",
+                    "Restringir a porta às estações de engenharia e proteger a CPU com senha (security key/remote password). " +
+                    "Para ler dados com o FieldProbe, abra uma conexão MC Protocol/SLMP no GX Works (ex.: porta 5000)."));
                 break;
 
             case 23:

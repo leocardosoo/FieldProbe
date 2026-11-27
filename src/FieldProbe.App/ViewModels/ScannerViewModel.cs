@@ -194,6 +194,7 @@ public sealed class ScannerViewModel : ObservableObject
             TimeoutMs = 3000,
             Options = info.Options.ToDictionary(o => o.Key, o => o.DefaultValue)
         };
+        foreach (var (key, value) in result.SuggestedOptions) settings.Options[key] = value;
         _createConnection(settings);
         StatusText = $"Conexão {info.Protocol} criada para {result.Ip}. Conecte-se pela janela principal.";
     }
